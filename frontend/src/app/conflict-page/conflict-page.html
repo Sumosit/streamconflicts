@@ -1,0 +1,187 @@
+<app-public-header />
+@if(previewMode){<div class="preview-banner"><b>{{ t.record.previewTitle }}</b><span>{{ t.record.previewText }}</span></div>}
+
+<main class="record">
+  @if (loadError) { <section class="record-hero"><div class="record-main"><h1>{{ t.record.notFound }}</h1><p>{{ t.record.notFoundText }}</p></div></section> } @else {
+  <nav class="breadcrumbs"><a routerLink="/">{{ t.record.breadcrumbArchive }}</a><span>/</span><span>{{ conflict.category }}</span></nav>
+  @if (conflict.cover) { <figure class="record-cover"><img [src]="conflict.cover" [alt]="conflict.title"></figure> }
+  <section class="record-hero">
+    <div class="record-main">
+      <div class="record-state"><i></i>{{ conflict.status }}<span>Обновлено {{ conflict.updated }}</span></div>
+      <h1 [fitText]="conflict.title" [fitLines]="3" [fitMinSize]="26">{{ conflict.title }}</h1>
+      <p>{{ conflict.summary }}</p>
+      <div class="people">
+        @for (person of conflict.people; track person.name) {
+          <a [routerLink]="['/people', person.slug]">@if(person.avatar){<img class="avatar avatar-image" [src]="person.avatar" [alt]="person.name">}@else{<span class="avatar" [style.background]="person.color">{{ person.initials }}</span>}<span><small>{{ t.record.participant }}</small><b>{{ person.name }}</b></span></a>
+        }
+      </div>
+    </div>
+    <aside class="record-facts">
+      <h2>{{ t.record.factsTitle }}</h2>
+      <dl><div><dt>{{ t.record.factStatus }}</dt><dd>{{ conflict.status }}</dd></div><div><dt>{{ t.record.factEvents }}</dt><dd>{{ conflict.events.length }}</dd></div><div><dt>{{ t.record.factChecked }}</dt><dd>{{ conflict.updated }}</dd></div><div><dt>{{ t.record.factNext }}</dt><dd>{{ nextAction() }}</dd></div></dl>
+      <button type="button" (click)="copyPageLink()">{{ pageLinkCopied() ? t.record.shareCopied : t.record.share }}</button>
+      <p>{{ t.record.factsNote }}</p>
+    </aside>
+  </section>
+
+  <section class="record-body">
+    <div>
+      <div class="section-title">
+        <h2>{{ t.record.timeline }}</h2>
+        <div class="timeline-controls">
+          <button class="timeline-order" type="button" (click)="newestFirst.set(!newestFirst())">{{newestFirst()?t.record.newestFirst:t.record.oldestFirst}}</button>
+          <label class="ui-check"><input type="checkbox" [checked]="hideCommentary()" (change)="hideCommentary.set(!hideCommentary())"><span aria-hidden="true"></span>{{ t.record.hideCommentary }}</label>
+          <span>{{ visibleEventsCount() }} {{ t.record.eventsCount }}</span>
+        </div>
+      </div>
+      <div class="timeline" [class.newest-first]="newestFirst()">
+        @for (event of conflict.events; track event.time; let eventIndex = $index) {
+          @if (!hideCommentary() || !isCommentaryEvent(eventIndex)) {
+          <article class="timeline-item" [class.current]="event.current" [class.highlighted]="activeEventIndex() === eventIndex" [id]="'event-' + eventIndex">
+            <time>{{ event.time }}</time><i></i>
+            <div class="event-card">
+              <div class="event-labels">
+                @if(event.current){<span class="latest-label">{{ t.record.latestUpdate }}</span>}
+                <span class="event-kind">{{ eventKind(eventIndex) }}</span>
+                <span class="source-label">{{ event.type }}</span>
+                <span class="source-status"><i></i>{{ sourceStatus(event) }}</span>
+              </div>
+              <h3>{{ event.title }}</h3>
+              <p>{{ event.text }}</p>
+              @if (isVideo(event.type)) {
+                <a class="source-preview source-preview--video" [href]="event.url" target="_blank" rel="noopener" [attr.aria-label]="t.record.openVideo">
+                  <span class="source-preview__visual">
+                    <span class="source-preview__platform">{{ event.type.includes('YOUTUBE') ? 'YouTube' : 'Twitch' }}</span>
+                    <span class="source-preview__play" aria-hidden="true">▶</span>
+                    <span class="source-preview__duration">{{ videoDuration(eventIndex) }}</span>
+                  </span>
+                  <span class="source-preview__info"><span>{{ t.record.videoSource }}</span><b>{{ event.source }}</b><small>{{ t.record.openOnPlatform }}</small></span>
+                </a>
+              } @else if (isPost(event.type)) {
+                <a class="source-preview source-preview--post" [href]="event.url" target="_blank" rel="noopener" [attr.aria-label]="t.record.openPost">
+                  <span class="source-preview__post-icon" aria-hidden="true">↗</span>
+                  <span class="source-preview__info"><span>{{ t.record.publicPost }}</span><b>{{ event.source }}</b><small>{{ t.record.originalPost }}</small></span>
+                </a>
+              } @else {
+                @if(event.url){<a class="source-link" [href]="event.url" target="_blank" rel="noopener">{{ event.source }} ↗</a>}@else{<span class="source-link">{{ t.record.sourcePending }}</span>}
+              }
+              @if (event.sources.length > 1) {
+                <details class="event-sources">
+                  <summary><span>{{ t.record.allSources }}</span><b>{{ event.sources.length }}</b></summary>
+                  <div class="event-source-list">
+                    @for (source of event.sources; track source.id || source.url; let sourceIndex = $index) {
+                      <a class="event-source-row" [href]="source.url" target="_blank" rel="noopener">
+                        <span class="event-source-index">{{ sourceIndex + 1 }}</span>
+                        <span class="event-source-copy">
+                          <b>{{ source.title || source.platform }}</b>
+                          <small>{{ source.platform }} · {{ sourceTypeLabel(source.media_type) }}</small>
+                        </span>
+                        <span class="event-source-status" [class.primary]="source.source_status === 'primary'">{{ sourceStatusLabel(source.source_status) }}</span>
+                        <span class="event-source-arrow" aria-hidden="true">↗</span>
+                      </a>
+                    }
+                  </div>
+                </details>
+              }
+              <div class="event-actions">
+                <button type="button" (click)="copyEventLink(eventIndex)">{{ copiedEventIndex() === eventIndex ? t.record.eventLinkCopied : t.record.copyEventLink }}</button>
+                <span>{{ t.record.checked }} {{ event.time }}</span>
+              </div>
+            </div>
+          </article>
+          }
+        }
+      </div>
+    </div>
+    <aside class="method">
+      <h3>{{ t.record.aboutTitle }}</h3><p>{{ t.record.aboutText }}</p>
+      <a routerLink="/rules">{{ t.record.rules }}</a>
+      <details class="editorial-section" open>
+        <summary><h3>{{ t.record.positionsTitle }}</h3><span>{{ conflict.people.length }}</span></summary>
+        @for (person of conflict.people; track person.name; let personIndex = $index) {
+          <div class="position-card">
+            <div>@if(person.avatar){<img class="avatar avatar-image" [src]="person.avatar" [alt]="person.name">}@else{<span class="avatar" [style.background]="person.color">{{ person.initials }}</span>}<b>{{ person.name }}</b></div>
+            <p>{{ personIndex === 0 ? t.record.positionFirst : t.record.positionSecond }}</p>
+            <span>{{ personIndex === 0 ? t.record.positionFirstNote : t.record.positionSecondNote }}</span>
+          </div>
+        }
+        <div class="verified-note"><b>{{ t.record.verifiedTitle }}</b><p>{{ t.record.verifiedText }}</p></div>
+      </details>
+      <details class="material-people" open>
+        <summary class="material-people__heading"><h3>{{ t.record.participantsTitle }}</h3><span>{{ conflict.people.length }}</span></summary>
+        @for (person of conflict.people; track person.name; let personIndex = $index) {
+          <button class="material-person" type="button" (click)="scrollToEvent(personIndex)">
+            @if(person.avatar){<img class="avatar avatar-image" [src]="person.avatar" [alt]="person.name">}@else{<span class="avatar" [style.background]="person.color">{{ person.initials }}</span>}
+            <span><b>{{ person.name }}</b><small>{{ t.record.sideOfConflict }}</small></span>
+            <span class="material-person__arrow" aria-hidden="true">↓</span>
+          </button>
+        }
+      </details>
+      <details class="material-people" open>
+        <summary class="material-people__heading"><h3>{{ t.record.commentatorsTitle }}</h3><span>{{ conflict.commentators.length }}</span></summary>
+        @for (person of conflict.commentators; track person.name) {
+          @if (person.eventIndexes.length > 1) {
+            <details class="commentator-entry">
+              <summary class="material-person">
+                @if(person.avatar){<img class="avatar avatar-image" [src]="person.avatar" [alt]="person.name">}@else{<span class="avatar avatar--neutral">{{ person.initials }}</span>}
+                <span><b>{{ person.name }}</b><small>{{ person.eventIndexes.length }} {{ t.units.comments }}</small></span>
+                <span class="material-person__arrow material-person__arrow--expand" aria-hidden="true">›</span>
+              </summary>
+              <div class="commentator-events">
+                @for (eventIndex of person.eventIndexes; track eventIndex) {
+                  <button type="button" (click)="scrollToEvent(eventIndex)">
+                    <span>{{ conflict.events[eventIndex].time }}</span>
+                    <b>{{ conflict.events[eventIndex].title }}</b>
+                    <i aria-hidden="true">↓</i>
+                  </button>
+                }
+              </div>
+            </details>
+          } @else {
+            <button class="material-person" type="button" (click)="scrollToEvent(person.eventIndexes[0])">
+              @if(person.avatar){<img class="avatar avatar-image" [src]="person.avatar" [alt]="person.name">}@else{<span class="avatar avatar--neutral">{{ person.initials }}</span>}
+              <span><b>{{ person.name }}</b><small>{{ person.role }}</small></span>
+              <span class="material-person__arrow" aria-hidden="true">↓</span>
+            </button>
+          }
+        }
+      </details>
+      <hr><span>{{ t.record.foundError }}</span><button type="button" (click)="openCorrection()">{{ t.record.suggestCorrection }}</button>
+    </aside>
+  </section>
+  @if (relatedConflicts().length) {
+    <section class="related-materials" aria-labelledby="related-title">
+      <div class="section-title"><h2 id="related-title">{{ t.record.relatedTitle }}</h2><span>{{ relatedConflicts().length }}</span></div>
+      <div class="related-grid">
+        @for (item of relatedConflicts(); track item.slug) {
+          <a class="related-card" [routerLink]="['/conflicts',item.slug]">
+            @if(item.cover){<img [src]="item.cover" [alt]="item.title" loading="lazy">}@else{<span class="related-card__placeholder" aria-hidden="true"></span>}
+            <span class="related-card__body"><small>{{ item.reason }}</small><b>{{ item.title }}</b><span>{{ item.events }} {{t.units.events}} · {{ t.record.relatedUpdated }} {{ item.updated }}</span></span>
+          </a>
+        }
+      </div>
+    </section>
+  }
+  }
+</main>
+
+<app-public-footer />
+
+@if (correctionOpen()) {
+  <div class="correction-backdrop" (click)="correctionOpen.set(false)">
+    <section class="correction-modal" role="dialog" aria-modal="true" aria-labelledby="correction-title" (click)="$event.stopPropagation()">
+      <button class="correction-close" type="button" [attr.aria-label]="t.correction.close" (click)="correctionOpen.set(false)">×</button>
+      @if (correctionSent()) {
+        <div class="correction-success"><span>✓</span><h2 id="correction-title">{{ t.correction.sentTitle }}</h2><p>{{ t.correction.sentText }}</p><button type="button" (click)="correctionOpen.set(false)">{{ t.correction.close }}</button></div>
+      } @else {
+        <form (submit)="$event.preventDefault(); submitCorrection()">
+          <span class="modal-kicker">{{ t.correction.kicker }}</span><h2 id="correction-title">{{ t.correction.title }}</h2><p>{{ t.correction.text }}</p>
+          <label>{{ t.correction.statementLabel }}<textarea rows="4" name="statement" [(ngModel)]="correction.statement" required minlength="10" [placeholder]="t.correction.statementPlaceholder"></textarea></label>
+          <label>{{ t.correction.sourceLabel }}<input type="url" name="source_url" [(ngModel)]="correction.source_url" required placeholder="https://"></label>
+          <label>{{ t.correction.contactLabel }}<input type="text" name="contact" [(ngModel)]="correction.contact" [placeholder]="t.correction.contactPlaceholder"></label>
+          <button class="ui-button ui-button--primary" type="submit">{{ t.correction.send }}</button>
+        </form>
+      }
+    </section>
+  </div>
+}

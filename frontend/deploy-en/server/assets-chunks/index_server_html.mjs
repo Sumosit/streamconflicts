@@ -1,0 +1,28 @@
+export default `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>StreamArchive - timelines of streamer conflicts</title>
+  <base href="/en/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A neutral archive of streamer conflicts: facts, timelines and primary sources.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:site_name" content="StreamArchive">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="StreamArchive - streamer conflicts in order">
+  <meta property="og:description" content="Timelines of streamer conflicts with participants, dates, videos and links to primary sources.">
+  <meta property="og:url" content="https://streamconflicts.com/en">
+  <meta name="twitter:card" content="summary">
+  <!-- Путь относительный: разрешается от base href, поэтому иконку отдаёт англоязычный контейнер. -->
+  <link rel="alternate" type="application/rss+xml" title="StreamArchive" href="/en/rss.xml">
+  <link rel="icon" type="image/png" sizes="32x32" href="streamconflict-logo-32x32.png?v=20260803-2">
+  <link rel="icon" type="image/png" sizes="16x16" href="streamconflict-logo-16x16.png?v=20260803-2">
+  <link rel="apple-touch-icon" href="streamconflict-logo-512x512.png?v=20260803-2">
+<link rel="stylesheet" href="styles-4R6JCEQJ.css"></head>
+<body><script type="text/javascript" id="ng-event-dispatch-contract">(()=>{function p(t,n,r,o,e,i,f,m){return{eventType:t,event:n,targetElement:r,eic:o,timeStamp:e,eia:i,eirp:f,eiack:m}}function u(t){let n=[],r=e=>{n.push(e)};return{c:t,q:n,et:[],etc:[],d:r,h:e=>{r(p(e.type,e,e.target,t,Date.now()))}}}function s(t,n,r){for(let o=0;o<n.length;o++){let e=n[o];(r?t.etc:t.et).push(e),t.c.addEventListener(e,t.h,r)}}function c(t,n,r,o,e=window){let i=u(t);e._ejsas||(e._ejsas={}),e._ejsas[n]=i,s(i,r),s(i,o,!0)}window.__jsaction_bootstrap=c;})();
+</script>
+  <app-root></app-root>
+<link rel="modulepreload" href="chunk-DXBWI2BB.js"><link rel="modulepreload" href="chunk-2VXN6YZJ.js"><link rel="modulepreload" href="chunk-M3EEULNN.js"><link rel="modulepreload" href="chunk-VRILMPMF.js"><link rel="modulepreload" href="chunk-2MWFFV3G.js"><link rel="modulepreload" href="chunk-YAGEMMR6.js"><script src="polyfills-5CFQRCPP.js" type="module"></script><script src="main-YOFTNFWC.js" type="module"></script></body>
+</html>
+`;

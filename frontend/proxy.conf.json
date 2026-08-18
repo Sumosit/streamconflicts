@@ -1,0 +1,12 @@
+{
+  "/api": {
+    "target": "https://dev.streamconflicts.com",
+    "secure": true,
+    "changeOrigin": true
+  },
+  "/uploads": {
+    "target": "https://dev.streamconflicts.com",
+    "secure": true,
+    "changeOrigin": true
+  }
+}

@@ -1,0 +1,65 @@
+@use './styles/ui-kit';
+
+:root {
+  color-scheme: dark;
+
+  /* Raw palette. Use the semantic tokens below inside components. */
+  --slate-950: #101114;
+  --slate-900: #141518;
+  --slate-850: #17191d;
+  --slate-800: #1d1f24;
+  --slate-700: #292c31;
+  --slate-650: #343840;
+  --slate-500: #686e79;
+  --slate-400: #9da2ac;
+  --slate-300: #b8bbc2;
+  --slate-100: #e8e9ec;
+  --blue-500: #6d8cff;
+  --blue-300: #9eb0f5;
+  --red-400: #df8069;
+  --green-400: #79b99a;
+  --yellow-400: #c2b86f;
+
+  /* Semantic color tokens. */
+  --surface-page: var(--slate-950);
+  --surface-card: var(--slate-900);
+  --surface-card-hover: var(--slate-850);
+  --surface-elevated: var(--slate-800);
+  --border-subtle: var(--slate-700);
+  --border-strong: var(--slate-650);
+  --text-primary: var(--slate-100);
+  --text-secondary: var(--slate-300);
+  --text-muted: var(--slate-400);
+  --text-faint: var(--slate-500);
+  --action-primary: var(--blue-500);
+  --action-primary-hover: var(--blue-300);
+  --status-live: var(--red-400);
+  --status-closed: var(--green-400);
+  --status-quiet: var(--yellow-400);
+  --focus-ring: 0 0 0 3px rgb(109 140 255 / 24%);
+
+  /* Backward-compatible aliases; remove after component migration. */
+  --bg: var(--surface-page);
+  --ink: var(--text-primary);
+  --muted: var(--text-muted);
+  --line: var(--border-subtle);
+  --accent: var(--action-primary);
+  --orange: var(--status-live);
+
+  --sans: 'Segoe UI', Arial, sans-serif;
+  --serif: Georgia, 'Times New Roman', serif;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  zoom: 1.25;
+}
+button, input, textarea { font-family: inherit; }
+:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
+::selection { background: var(--action-primary); color: var(--surface-page); }

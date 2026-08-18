@@ -1,0 +1,7 @@
+FROM node:20-alpine
+WORKDIR /app
+COPY deploy-en ./deploy
+ENV NODE_ENV=production
+ENV PORT=4000
+EXPOSE 4000
+CMD ["node", "deploy/server/server.mjs"]

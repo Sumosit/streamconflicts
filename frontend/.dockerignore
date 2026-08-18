@@ -1,0 +1,12 @@
+node_modules
+.angular
+.build-*
+out-tsc
+dist
+src
+public
+angular.json
+package.json
+package-lock.json
+tsconfig*.json
+*.log

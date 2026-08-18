@@ -1,0 +1,15 @@
+# Server runtime data and secrets
+.env.dev
+.env.prod
+server-data/
+backups/
+backend/**/__pycache__/
+backend/**/*.pyc
+
+# Frontend generated output
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.build-*/
+frontend/deploy/
+frontend/out-tsc/

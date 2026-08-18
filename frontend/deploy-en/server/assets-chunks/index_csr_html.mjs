@@ -1,0 +1,27 @@
+export default `<!doctype html>
+<html lang="en" data-beasties-container="">
+<head>
+  <meta charset="utf-8">
+  <title>StreamArchive - timelines of streamer conflicts</title>
+  <base href="/en/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A neutral archive of streamer conflicts: facts, timelines and primary sources.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:site_name" content="StreamArchive">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="StreamArchive - streamer conflicts in order">
+  <meta property="og:description" content="Timelines of streamer conflicts with participants, dates, videos and links to primary sources.">
+  <meta property="og:url" content="https://streamconflicts.com/en">
+  <meta name="twitter:card" content="summary">
+  <!-- Путь относительный: разрешается от base href, поэтому иконку отдаёт англоязычный контейнер. -->
+  <link rel="alternate" type="application/rss+xml" title="StreamArchive" href="/en/rss.xml">
+  <link rel="icon" type="image/png" sizes="32x32" href="streamconflict-logo-32x32.png?v=20260803-2">
+  <link rel="icon" type="image/png" sizes="16x16" href="streamconflict-logo-16x16.png?v=20260803-2">
+  <link rel="apple-touch-icon" href="streamconflict-logo-512x512.png?v=20260803-2">
+<style>:root{color-scheme:dark;--slate-950:#101114;--slate-900:#141518;--slate-850:#17191d;--slate-800:#1d1f24;--slate-700:#292c31;--slate-650:#343840;--slate-500:#686e79;--slate-400:#9da2ac;--slate-300:#b8bbc2;--slate-100:#e8e9ec;--blue-500:#6d8cff;--blue-300:#9eb0f5;--red-400:#df8069;--green-400:#79b99a;--yellow-400:#c2b86f;--surface-page:var(--slate-950);--surface-card:var(--slate-900);--surface-card-hover:var(--slate-850);--surface-elevated:var(--slate-800);--border-subtle:var(--slate-700);--border-strong:var(--slate-650);--text-primary:var(--slate-100);--text-secondary:var(--slate-300);--text-muted:var(--slate-400);--text-faint:var(--slate-500);--action-primary:var(--blue-500);--action-primary-hover:var(--blue-300);--status-live:var(--red-400);--status-closed:var(--green-400);--status-quiet:var(--yellow-400);--focus-ring:0 0 0 3px rgb(109 140 255 / 24%);--bg:var(--surface-page);--ink:var(--text-primary);--muted:var(--text-muted);--line:var(--border-subtle);--accent:var(--action-primary);--orange:var(--status-live);--sans:"Segoe UI", Arial, sans-serif;--serif:Georgia, "Times New Roman", serif}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--surface-page);color:var(--text-primary);font-family:var(--sans);-webkit-font-smoothing:antialiased;zoom:1.25}</style><link rel="stylesheet" href="styles-4R6JCEQJ.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="styles-4R6JCEQJ.css"></noscript></head>
+<body ngcm="">
+  <app-root></app-root>
+<link rel="modulepreload" href="chunk-DXBWI2BB.js"><link rel="modulepreload" href="chunk-2VXN6YZJ.js"><link rel="modulepreload" href="chunk-M3EEULNN.js"><link rel="modulepreload" href="chunk-VRILMPMF.js"><link rel="modulepreload" href="chunk-2MWFFV3G.js"><link rel="modulepreload" href="chunk-YAGEMMR6.js"><script src="polyfills-5CFQRCPP.js" type="module"></script><script src="main-YOFTNFWC.js" type="module"></script></body>
+</html>
+`;

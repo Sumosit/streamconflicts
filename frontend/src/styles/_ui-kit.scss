@@ -1,0 +1,77 @@
+/*
+ * StreamArchive UI Kit
+ * Components use semantic design tokens from src/styles.scss.
+ */
+
+.ui-button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  vertical-align: middle;
+  background: transparent;
+  color: var(--text-primary);
+  font: 500 14px/1 var(--sans);
+  white-space: nowrap;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.ui-button:hover {
+  border-color: var(--action-primary);
+  background: rgb(109 140 255 / 8%);
+}
+
+.ui-button:active {
+  background: rgb(109 140 255 / 14%);
+}
+
+.ui-button:disabled {
+  color: var(--text-faint);
+  border-color: var(--border-subtle);
+  cursor: not-allowed;
+  opacity: 0.64;
+}
+
+.ui-button__icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--action-primary);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1;
+  transform: translateY(-0.5px);
+}
+
+.ui-button__label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 16px;
+  line-height: 1;
+}
+
+.ui-button--primary {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--surface-page);
+}
+
+.ui-button--primary .ui-button__icon {
+  color: currentColor;
+}
+
+.ui-button--compact {
+  min-height: 36px;
+  padding-inline: 14px;
+  font-size: 12px;
+}

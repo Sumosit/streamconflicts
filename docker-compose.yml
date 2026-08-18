@@ -1,0 +1,101 @@
+name: streamconflicts
+
+services:
+  frontend-dev:
+    image: node:20-alpine
+    working_dir: /app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      # Сервер маленький: ограничиваем кучу, чтобы SSR не выедал всю память.
+      NODE_OPTIONS: "--max-old-space-size=160"
+    mem_limit: 256m
+    volumes:
+      - ./frontend/deploy:/app/deploy:ro
+    command: ["node", "deploy/server/server.mjs"]
+    ports:
+      - "127.0.0.1:8081:4000"
+
+  api-dev:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env.dev
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - ./server-data/dev/data:/data
+      - ./server-data/dev/uploads:/uploads
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend-prod:
+    image: node:20-alpine
+    working_dir: /app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      # Сервер маленький: ограничиваем кучу, чтобы SSR не выедал всю память.
+      NODE_OPTIONS: "--max-old-space-size=160"
+    mem_limit: 256m
+    volumes:
+      - ./frontend/deploy:/app/deploy:ro
+    command: ["node", "deploy/server/server.mjs"]
+    ports:
+      - "127.0.0.1:8082:4000"
+
+  frontend-en:
+    image: node:20-alpine
+    working_dir: /app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      # Сервер маленький: ограничиваем кучу, чтобы SSR не выедал всю память.
+      NODE_OPTIONS: "--max-old-space-size=160"
+    mem_limit: 256m
+    volumes:
+      - ./frontend/deploy-en:/app/deploy:ro
+    command: ["node", "deploy/server/server.mjs"]
+    ports:
+      - "127.0.0.1:8083:4000"
+
+  api-en:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env.en
+    ports:
+      - "127.0.0.1:8003:8000"
+    volumes:
+      - ./server-data/en/data:/data
+      - ./server-data/en/uploads:/uploads
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  api-prod:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env.prod
+    ports:
+      - "127.0.0.1:8002:8000"
+    volumes:
+      - ./server-data/prod/data:/data
+      - ./server-data/prod/uploads:/uploads
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

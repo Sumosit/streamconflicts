@@ -1,0 +1,121 @@
+@if (!onConflictPage()) {
+<app-public-header />
+
+<main>
+  @if (featuredConflict(); as featured) {
+    <section class="featured-hero" id="feed">
+      <a class="featured-visual" [routerLink]="['/conflicts', featured.slug]" [class.without-image]="!featured.cover">
+        @if (featured.cover) { <img [src]="featured.cover" [alt]="featured.title"> } @else { <span>{{ t.brand }}</span> }
+      </a>
+      <div class="featured-copy">
+        <div class="featured-top"><span class="featured-label">{{ t.home.featuredLabel }}</span><span class="status" [class.closed]="featured.statusKey === 'closed'" [class.quiet]="featured.statusKey === 'quiet'"><i></i>{{ featured.status }}</span></div>
+        <div class="tags"><span>{{ featured.category }}</span>@for(platform of featured.platforms;track platform){<span>{{platform}}</span>}</div>
+        <h1>{{ featured.title }}</h1><p>{{ featured.summary }}</p>
+        <div class="featured-people">@for(person of featured.people;track person.name){<span>@if(person.avatar){<img class="avatar avatar-image" [src]="person.avatar" [alt]="person.name">}@else{<i class="avatar" [style.background]="person.color">{{person.initials}}</i>}{{person.name}}</span>}</div>
+        <div class="featured-footer"><div class="meta"><span>◷ {{featured.events}} {{t.units.events}}</span><span>↗ {{featured.sources}} {{t.units.sources}}</span></div><a [routerLink]="['/conflicts',featured.slug]">{{ t.home.openTimeline }} <span>↗</span></a></div>
+      </div>
+    </section>
+  }
+
+  <section class="search-section" [attr.aria-label]="t.home.searchLabel">
+    <label class="search-box">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+      <input #searchInput type="search" [placeholder]="t.home.searchPlaceholder" [value]="search()" (input)="setSearch(searchInput.value)" (keyup.enter)="submitSearch()"><button class="search-go" type="button" (click)="submitSearch()">{{ t.home.searchAction }}</button>
+    </label>
+    <div class="filters">
+      @for (filter of filters; track filter.key) {
+        <button [class.active]="activeFilter() === filter.key" (click)="applyFilter(filter.key)">{{ filter.label }}</button>
+      }
+    </div>
+  </section>
+
+  <section class="content-grid" id="archive">
+    <div class="feed">
+      <div class="section-heading">
+        <div><h2>{{ t.home.latest }}</h2><span class="count">{{ filteredConflicts().length }}</span></div>
+      </div>
+
+      @if (filteredConflicts().length === 0) {
+        <div class="empty"><strong>{{ t.home.emptyTitle }}</strong><span>{{ t.home.emptyText }}</span></div>
+      }
+
+      @for (conflict of filteredConflicts(); track conflict.id; let first = $first) {
+        <a class="conflict-card" [class.featured]="first && !search()" [routerLink]="['/conflicts', conflict.slug]">
+          <div class="card-topline">
+            <span class="status" [class.closed]="conflict.statusKey === 'closed'" [class.quiet]="conflict.statusKey === 'quiet'"><i></i>{{ conflict.status }}</span>
+            <span>{{ conflict.date }} · {{ conflict.age }}</span>
+          </div>
+          <div class="card-body" [class.has-cover]="conflict.cover">
+            @if (conflict.cover) {
+              <div class="card-cover">
+                <img [src]="conflict.cover" [alt]="conflict.title" loading="lazy">
+                <div class="card-cover-people avatars" [attr.aria-label]="t.home.participants">
+                  @for (person of conflict.people; track person.name) {
+                    @if(person.avatar){<img class="avatar avatar-image" [src]="person.avatar" [alt]="person.name" [title]="person.name">}@else{<span class="avatar" [style.background]="person.color" [title]="person.name">{{ person.initials }}</span>}
+                  }
+                </div>
+              </div>
+            }
+            <div class="card-copy">
+              @if (!conflict.cover) {
+                <div class="avatars card-people" [attr.aria-label]="t.home.participants">
+                  @for (person of conflict.people; track person.name) {
+                    @if(person.avatar){<img class="avatar avatar-image" [src]="person.avatar" [alt]="person.name" [title]="person.name">}@else{<span class="avatar" [style.background]="person.color" [title]="person.name">{{ person.initials }}</span>}
+                  }
+                </div>
+              }
+              <div class="tags"><span>{{ conflict.category }}</span>@for (platform of conflict.platforms; track platform) {<span>{{ platform }}</span>}</div>
+              <h3>{{ conflict.title }}</h3>
+              <p>{{ conflict.summary }}</p>
+              <div class="meta"><span>◷ {{ conflict.events }} {{t.units.events}}</span><span>↗ {{ conflict.sources }} {{t.units.sources}}</span></div>
+            </div>
+            <span class="arrow" aria-hidden="true">↗</span>
+          </div>
+        </a>
+      }
+      <a class="load-more" routerLink="/archive">{{ t.home.fullArchive }} <span>↗</span></a>
+    </div>
+
+    <aside>
+      <div class="updates-panel">
+        <div class="aside-heading"><h3>{{ t.home.latestMaterials }}</h3><span>{{ conflicts().length }}</span></div>
+        @for (conflict of conflicts().slice(0, 3); track conflict.id) {
+          <a class="update-row" [routerLink]="['/conflicts', conflict.slug]"><span class="update-time">{{ conflict.events }}</span><span><b>{{ conflict.title }}</b><small>{{ conflict.events }} {{t.units.events}} · {{ conflict.sources }} {{t.units.sources}}</small></span></a>
+        } @empty {
+          <div class="updates-empty"><span aria-hidden="true">○</span><div><b>{{ t.home.archiveEmptyTitle }}</b><small>{{ t.home.archiveEmptyText }}</small></div></div>
+        }
+      </div>
+      <div class="editorial" id="about">
+        <h3>{{ t.home.howTitle }}</h3>
+        <ul>@for(rule of t.home.how;track rule;let ruleIndex=$index){<li><span>0{{ruleIndex+1}}</span>{{rule}}</li>}</ul>
+        <a routerLink="/rules">{{ t.home.rules }}</a>
+      </div>
+      <div class="digest"><div><h3>{{ t.home.digestTitle }}</h3><p>{{ t.home.digestText }}</p></div><button>{{ t.home.digestButton }}</button></div>
+    </aside>
+  </section>
+</main>
+
+<app-public-footer />
+
+}
+<router-outlet />
+
+@if (submitOpen()) {
+  <div class="modal-backdrop" (click)="submitOpen.set(false)">
+    <section class="submit-modal" (click)="$event.stopPropagation()">
+      <button type="button" class="drawer-close" (click)="submitOpen.set(false)">×</button>
+      @if (submitSent()) {
+        <div class="submit-success"><span aria-hidden="true">✓</span><h2>{{ t.submit.sentTitle }}</h2><p>{{ t.submit.sentText }}</p><button class="modal-submit" type="button" (click)="submitOpen.set(false)">{{ t.submit.close }}</button></div>
+      } @else {
+        <form #submissionForm="ngForm" (ngSubmit)="submitMaterial()">
+          <span class="modal-kicker">{{ t.submit.kicker }}</span><h2>{{ t.submit.title }}</h2><p>{{ t.submit.text }}</p>
+          <label>{{ t.submit.sourceLabel }}<input type="url" name="source_url" [(ngModel)]="submission.source_url" placeholder="https://..." required pattern="https?://.+"></label>
+          <label>{{ t.submit.whatLabel }}<textarea rows="4" name="description" [(ngModel)]="submission.description" minlength="10" required [placeholder]="t.submit.whatPlaceholder"></textarea></label>
+          <label>{{ t.submit.contactLabel }}<input type="text" name="contact" [(ngModel)]="submission.contact" [placeholder]="t.submit.contactPlaceholder"></label>
+          @if (submitError()) { <p class="submit-error">{{ submitError() }}</p> }
+          <button class="modal-submit" type="submit" [disabled]="submissionForm.invalid || submitLoading()">{{ submitLoading() ? t.submit.sending : t.submit.send }}</button>
+        </form>
+      }
+    </section>
+  </div>
+}
