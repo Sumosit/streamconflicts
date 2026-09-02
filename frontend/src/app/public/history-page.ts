@@ -82,7 +82,7 @@ export class HistoryPage{
  /** Декады строим по годам, за которые события реально есть. */
  protected readonly decades=computed(()=>{
   const buckets=[...new Set(this.years().map(year=>Math.floor(year/10)*10))].sort((a,b)=>a-b);
-  return [{key:'all',label:T.history.periodAll},...buckets.map(start=>({key:String(start),label:`${start}—${start+9}`}))];
+  return [{key:'all',label:T.history.periodAll},...buckets.map(start=>({key:String(start),label:`${start}-${start+9}`}))];
  });
  protected readonly dirty=computed(()=>Boolean(this.query())||this.region()!=='all'||this.decade()!=='all'||this.withImages()||Boolean(this.category()));
 
@@ -185,7 +185,7 @@ export class HistoryPage{
   const filtered=this.page()>1||this.dirty();
   const current=this.findNode(this.category());
   this.seo.set({
-   title:current?`${current.title} — ${T.history.seoTitle}`:T.history.seoTitle,
+   title:current?`${current.title} - ${T.history.seoTitle}`:T.history.seoTitle,
    description:T.history.seoDescription,
    path:'/history',
    noindex:filtered&&!this.category(),

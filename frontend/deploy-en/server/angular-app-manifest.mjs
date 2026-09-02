@@ -15,58 +15,58 @@ export default {
   {
     "renderMode": 0,
     "preload": [
-      "chunk-7CJQ4IWX.js"
+      "chunk-7ROBR2JF.js"
     ],
     "route": "/en/conflicts/*"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-XX2CXADS.js"
+      "chunk-WZON5ZUF.js"
     ],
     "route": "/en/archive"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-XR4DIKH5.js",
-      "chunk-OTG4YEEP.js"
+      "chunk-YVA4SQWA.js",
+      "chunk-3JLHITOT.js"
     ],
     "route": "/en/history"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-OHJPZI66.js",
-      "chunk-OTG4YEEP.js"
+      "chunk-ZOW5ISJN.js",
+      "chunk-3JLHITOT.js"
     ],
     "route": "/en/history/*"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-PWRQX6IK.js"
+      "chunk-EGIVKXUR.js"
     ],
     "route": "/en/people"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-FBPBZLXR.js"
+      "chunk-4V3YQVVU.js"
     ],
     "route": "/en/people/*"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-YFVZUDH5.js"
+      "chunk-MF4IMJDI.js"
     ],
     "route": "/en/about"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-YFVZUDH5.js"
+      "chunk-MF4IMJDI.js"
     ],
     "route": "/en/rules"
   },
@@ -94,56 +94,56 @@ export default {
   {
     "renderMode": 1,
     "preload": [
-      "chunk-DX3LZYOG.js"
+      "chunk-AR24U4UO.js"
     ],
     "route": "/en/editor/conflicts/new"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-DX3LZYOG.js"
+      "chunk-AR24U4UO.js"
     ],
     "route": "/en/editor/conflicts/*"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-7CJQ4IWX.js"
+      "chunk-7ROBR2JF.js"
     ],
     "route": "/en/editor/conflicts/*/preview"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-VAR4PX63.js"
+      "chunk-ERDPX6LE.js"
     ],
     "route": "/en/editor/history"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-I62S4UWL.js"
+      "chunk-IEVAOP62.js"
     ],
     "route": "/en/editor/history/research"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-IGSJXVCO.js"
+      "chunk-MNONBYV6.js"
     ],
     "route": "/en/editor/history/import"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-EVMSHBAE.js"
+      "chunk-4SBLS5Y5.js"
     ],
     "route": "/en/editor/history/new"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-EVMSHBAE.js"
+      "chunk-4SBLS5Y5.js"
     ],
     "route": "/en/editor/history/*"
   },
@@ -164,14 +164,14 @@ export default {
   {
     "renderMode": 1,
     "preload": [
-      "chunk-MMPBJXEU.js"
+      "chunk-PN33UYLI.js"
     ],
     "route": "/en/editor/analytics"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-IARP2QWC.js"
+      "chunk-CB5MZP27.js"
     ],
     "route": "/en/editor/people"
   },
@@ -206,15 +206,15 @@ export default {
   {
     "renderMode": 0,
     "preload": [
-      "chunk-V67TLQFR.js"
+      "chunk-WXHALYOH.js"
     ],
     "route": "/en/**"
   }
 ],
   entryPointToBrowserMapping: undefined,
   assets: {
-    'index.csr.html': {size: 3434, hash: '7c3b8743caaea489c23e52591198d226af4a6064387d6eb034a36e204851de04', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
-    'index.server.html': {size: 2522, hash: '402b8ff88151985fefe7e210a0b81fd4cb5ac2690aba726238a47e671de979f8', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
+    'index.csr.html': {size: 3434, hash: '9d60df3c90340b363884dc8d3895044b1f44f7489134d9e6156bda818086e671', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
+    'index.server.html': {size: 2522, hash: '7a8386e95b3f01617689eae8c1394cff9fc67f92d5d02d9f08cfa720f68471c0', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
     'styles-4R6JCEQJ.css': {size: 2628, hash: 'dO/l0fupjls', text: () => import('./assets-chunks/styles-4R6JCEQJ_css.mjs').then(m => m.default)}
   },
 };

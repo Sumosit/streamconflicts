@@ -73,7 +73,7 @@ export class ArchivePage{
   // а ценность для поиска несут карточки материалов, а не сама выборка.
   const paged=this.page()>1||Boolean(this.query());
   this.seo.set({
-   title:paged?`${T.archive.seoTitle} — ${T.archive.pageLabel} ${this.page()}`:T.archive.seoTitle,
+   title:paged?`${T.archive.seoTitle} - ${T.archive.pageLabel} ${this.page()}`:T.archive.seoTitle,
    description:T.archive.seoDescription,
    path:'/archive',
    noindex:paged,

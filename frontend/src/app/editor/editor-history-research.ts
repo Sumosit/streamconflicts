@@ -5,7 +5,7 @@ import { ApiService, HistoryCategoryAdminDto, HistoryResearchBatchDto } from '..
 
 @Component({selector:'app-editor-history-research',imports:[FormsModule,RouterLink],template:`<main class="editor-shell">
 <header class="editor-header"><a routerLink="/editor/history"><b>← История</b></a><nav><a class="button" routerLink="/editor/history/import">Импорт JSON</a></nav></header>
-<div class="section-head"><div><h1>Очередь исследования</h1><p class="muted">Один пакет — один срез: период, регион и тема. В запрос уходит только этот срез и список уже известных событий, а не вся база.</p></div><span>{{batches().length}}</span></div>
+<div class="section-head"><div><h1>Очередь исследования</h1><p class="muted">Один пакет - один срез: период, регион и тема. В запрос уходит только этот срез и список уже известных событий, а не вся база.</p></div><span>{{batches().length}}</span></div>
 
 <section class="panel">
  <span class="muted">СОЗДАТЬ ПАКЕТЫ</span>
@@ -18,7 +18,7 @@ import { ApiService, HistoryCategoryAdminDto, HistoryResearchBatchDto } from '..
   <label>Тема<select [(ngModel)]="categoryId"><option [ngValue]="null">Любая</option>@for(item of categories();track item.id){<option [ngValue]="item.id">{{item.path}}</option>}</select></label>
   <button class="button primary" type="button" (click)="plan()" [disabled]="busy()">Создать</button>
  </div>
- <p class="muted">Существующие срезы не дублируются. По месяцам стоит дробить только насыщенные годы — иначе получится много пустых запросов.</p>
+ <p class="muted">Существующие срезы не дублируются. По месяцам стоит дробить только насыщенные годы - иначе получится много пустых запросов.</p>
  @if(note()){<p class="success">{{note()}}</p>}
  @if(error()){<p class="error">{{error()}}</p>}
 </section>
@@ -83,8 +83,8 @@ export class EditorHistoryResearch{
  }
  protected periodLabel(batch:HistoryResearchBatchDto):string{
   if(!batch.period_start&&!batch.period_end)return 'Весь период';
-  const format=(value:string|null)=>value?value.split('-').reverse().join('.'):'—';
-  return `${format(batch.period_start)} — ${format(batch.period_end)}`;
+  const format=(value:string|null)=>value?value.split('-').reverse().join('.'):'-';
+  return `${format(batch.period_start)} - ${format(batch.period_end)}`;
  }
 
  protected plan():void{
@@ -96,7 +96,7 @@ export class EditorHistoryResearch{
   }).subscribe({
    next:created=>{
     this.busy.set(false);
-    this.note.set(created.length?`Создано пакетов: ${created.length}`:'Новых срезов нет — эти уже запланированы.');
+    this.note.set(created.length?`Создано пакетов: ${created.length}`:'Новых срезов нет - эти уже запланированы.');
     this.load();
    },
    error:response=>{this.busy.set(false);this.error.set(response.error?.detail||'Не удалось создать пакеты');},

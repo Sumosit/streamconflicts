@@ -8,7 +8,7 @@ import { AnalyticsSummaryDto, ApiService } from '../api.service';
   template: `
     <main class="editor-shell analytics-page">
       <header class="editor-header"><a routerLink="/editor"><b>← Материалы</b></a><div class="actions">@for(value of periods;track value){<button class="button" [class.primary]="days()===value" (click)="setDays(value)">{{value}} дней</button>}</div></header>
-      <div class="section-head"><div><span class="muted">СОБСТВЕННАЯ АНАЛИТИКА</span><h1>Статистика посещений</h1><p class="muted">Посетитель определяется по метке в браузере, без кук. Уникальный просмотр — пара «посетитель + страница» за период, повторные обновления страницы не учитываются.</p></div></div>
+      <div class="section-head"><div><span class="muted">СОБСТВЕННАЯ АНАЛИТИКА</span><h1>Статистика посещений</h1><p class="muted">Посетитель определяется по метке в браузере, без кук. Уникальный просмотр - пара «посетитель + страница» за период, повторные обновления страницы не учитываются.</p></div></div>
       <nav class="analytics-language-tabs" aria-label="Язык статистики">@for(item of languages;track item.value){<button class="button" [class.primary]="siteLang()===item.value" (click)="setLanguage(item.value)">{{item.label}}</button>}</nav>
       @if(error()){<p class="error">{{error()}}</p>}
       @if(data();as report){

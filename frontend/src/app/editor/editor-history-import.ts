@@ -36,7 +36,7 @@ import { ApiService, HistoryImportMode, HistoryImportReportDto } from '../api.se
    <div><span>Пропущено</span><b>{{result.to_skip}}</b></div>
    <div><span>С ошибками</span><b>{{result.with_errors}}</b></div>
   </div>
-  @if(result.applied){<p class="success">Создано: {{result.created_events}}, обновлено: {{result.updated_events}}. Все события — черновики, проверьте их в списке.</p>}
+  @if(result.applied){<p class="success">Создано: {{result.created_events}}, обновлено: {{result.updated_events}}. Все события - черновики, проверьте их в списке.</p>}
 
   @if(result.unmatched_people.length){<h3>Участники не найдены в справочнике</h3>
    <p class="muted">Импорт их не создаёт: одно имя приходит от модели в разных вариантах, и автосоздание засорило бы справочник. Заведите записи вручную и привяжите в карточке события.</p>

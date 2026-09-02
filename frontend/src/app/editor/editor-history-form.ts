@@ -52,7 +52,7 @@ function toDraft(source: Partial<TranslationDraft> | undefined): TranslationDraf
    <label>Значимость (0–100)<input type="number" min="0" max="100" [(ngModel)]="model.importance"></label>
    <label>Уверенность (0–100)<input type="number" min="0" max="100" [(ngModel)]="model.confidence"></label>
    <label>Статус<select [(ngModel)]="model.status"><option value="draft">Черновик</option><option value="review">На проверке</option><option value="published">Опубликовано</option><option value="rejected">Отклонено</option></select></label>
-   <label>Slug<input [(ngModel)]="model.slug" placeholder="twitch-launch"><small class="muted">Пусто — соберётся из английского заголовка.</small></label>
+   <label>Slug<input [(ngModel)]="model.slug" placeholder="twitch-launch"><small class="muted">Пусто - соберётся из английского заголовка.</small></label>
   </div>
   <br>
   <label class="history-check"><input type="checkbox" [(ngModel)]="model.is_published"> Показывать на сайте</label>
@@ -113,7 +113,7 @@ function toDraft(source: Partial<TranslationDraft> | undefined): TranslationDraf
   @if(imageError()){<p class="error">{{imageError()}}</p>}
   @for(image of model.images;track image.id){<article class="source-box">
    <div class="source-box-head"><b>{{reviewLabel(image.review_status)}}</b>@if(image.is_cover){<span class="badge">ОБЛОЖКА</span>}</div>
-   @if(image.file_url){<img class="editor-cover" [src]="image.file_url" alt="">}@else{<p class="muted">Файл ещё не скачан — на сайте не показывается.</p>}
+   @if(image.file_url){<img class="editor-cover" [src]="image.file_url" alt="">}@else{<p class="muted">Файл ещё не скачан - на сайте не показывается.</p>}
    <p class="muted">{{image.source_url||image.file_url}}</p>
    <div class="grid">
     <label>Подпись RU<input [(ngModel)]="image.caption['ru']"></label>
@@ -146,7 +146,7 @@ function toDraft(source: Partial<TranslationDraft> | undefined): TranslationDraf
  </section>}
 }
 
-@if(id){<section class="panel"><div class="section-head"><h2>Удаление</h2></div><p class="muted">Опубликованное событие удалить нельзя — сначала снимите с публикации.</p><button class="button danger" type="button" (click)="remove()">Удалить событие</button></section>}
+@if(id){<section class="panel"><div class="section-head"><h2>Удаление</h2></div><p class="muted">Опубликованное событие удалить нельзя - сначала снимите с публикации.</p><button class="button danger" type="button" (click)="remove()">Удалить событие</button></section>}
 </main>`,styleUrl:'./editor.scss'})
 export class EditorHistoryForm{
  private readonly api=inject(ApiService);

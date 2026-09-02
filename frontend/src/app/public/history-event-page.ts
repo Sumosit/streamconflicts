@@ -60,7 +60,7 @@ export class HistoryEventPage{
 
  private applySeo(item:HistoryEventDetailDto):void{
   this.seo.set({
-   title:`${item.title} — ${T.history.kicker}`,
+   title:`${item.title} - ${T.history.kicker}`,
    description:item.summary,
    path:`/history/${item.slug}`,
    type:'article',

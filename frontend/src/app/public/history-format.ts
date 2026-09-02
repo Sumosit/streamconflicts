@@ -26,7 +26,7 @@ export function historyDateLabel(value: string | null, precision: string): strin
 export function historyRangeLabel(start: string | null, end: string | null, precision: string): string {
   const from = historyDateLabel(start, precision);
   if (!end || end === start) return from;
-  return `${from} — ${historyDateLabel(end, precision)}`;
+  return `${from} - ${historyDateLabel(end, precision)}`;
 }
 
 function capitalize(value: string): string {

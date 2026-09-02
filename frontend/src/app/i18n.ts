@@ -62,7 +62,7 @@ const ru = {
   history: {
     kicker: 'История стриминга',
     title: 'Как появился и менялся стриминг',
-    lead: 'Хронология площадок, технологий и культуры прямых трансляций — с датами и источниками.',
+    lead: 'Хронология площадок, технологий и культуры прямых трансляций - с датами и источниками.',
     menuTitle: 'Разделы',
     allEvents: 'Все события',
     searchPlaceholder: 'Событие, площадка или человек',
@@ -282,7 +282,7 @@ const en: Strings = {
   history: {
     kicker: 'History of streaming',
     title: 'How streaming began and changed',
-    lead: 'A timeline of platforms, technology and live broadcasting culture — with dates and sources.',
+    lead: 'A timeline of platforms, technology and live broadcasting culture - with dates and sources.',
     menuTitle: 'Sections',
     allEvents: 'All events',
     searchPlaceholder: 'Event, platform or person',
