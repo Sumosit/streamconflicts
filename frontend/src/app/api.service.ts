@@ -112,6 +112,60 @@ export interface SubmissionDto {
   created_at: string;
 }
 
+export interface HistoryCategoryDto {
+  id: number;
+  slug: string;
+  title: string;
+  is_platform: boolean;
+  event_count: number;
+  children: HistoryCategoryDto[];
+}
+
+export interface HistoryEventDto {
+  id: number;
+  slug: string;
+  title: string;
+  summary: string;
+  language: string;
+  /** Перевода на язык сайта нет, показан соседний язык. */
+  translation_missing: boolean;
+  date_start: string | null;
+  date_end: string | null;
+  date_precision: string;
+  year: number | null;
+  region: string;
+  importance: number;
+  cover_image_url: string | null;
+  category_slug: string | null;
+  category_title: string | null;
+}
+
+export interface HistoryEventDetailDto extends HistoryEventDto {
+  content: string;
+  historical_context: string;
+  consequences: string;
+  available_languages: string[];
+  breadcrumbs: { slug: string; title: string }[];
+  sources: { id: number; url: string; title: string; publisher: string | null; published_at: string | null; language: string | null; source_status: string; is_available: boolean }[];
+  images: { id: number; file_url: string | null; source_url: string | null; author: string | null; license: string | null; is_cover: boolean; caption: string | null; alt_text: string | null }[];
+  people: { id: number; slug: string; name: string; initials: string; avatar_url: string | null; site_lang: string; relation: string; role: string | null }[];
+  related: HistoryEventDto[];
+}
+
+export interface HistoryEventsPage { items: HistoryEventDto[]; total: number; page: number; per_page: number }
+
+export interface HistoryQuery {
+  category?: string | null;
+  region?: string | null;
+  yearFrom?: number | null;
+  yearTo?: number | null;
+  person?: string | null;
+  query?: string | null;
+  withImages?: boolean;
+  page?: number;
+  perPage?: number;
+}
+
 export interface ConflictsPage { items: ConflictDto[]; total: number }
 export interface AvatarCheckDto { id:number; slug:string; name:string; avatar_url:string; ok:boolean; detail:string }
 
@@ -140,6 +194,32 @@ export class ApiService {
 
   conflict(slug: string): Observable<ConflictDto> {
     return this.http.get<ConflictDto>(`${SITE.apiBase}/api/conflicts/${slug}`);
+  }
+
+  historyCategories(): Observable<HistoryCategoryDto[]> {
+    return this.http.get<HistoryCategoryDto[]>(`${SITE.apiBase}/api/history/categories`);
+  }
+
+  historyYears(): Observable<number[]> {
+    return this.http.get<number[]>(`${SITE.apiBase}/api/history/years`);
+  }
+
+  historyEvents(options: HistoryQuery = {}): Observable<HistoryEventsPage> {
+    let params = new HttpParams();
+    if (options.category) params = params.set('category', options.category);
+    if (options.region && options.region !== 'all') params = params.set('region', options.region);
+    if (options.yearFrom) params = params.set('year_from', options.yearFrom);
+    if (options.yearTo) params = params.set('year_to', options.yearTo);
+    if (options.person) params = params.set('person', options.person);
+    if (options.query?.trim()) params = params.set('q', options.query.trim());
+    if (options.withImages) params = params.set('with_images', true);
+    if (options.page) params = params.set('page', options.page);
+    if (options.perPage) params = params.set('per_page', options.perPage);
+    return this.http.get<HistoryEventsPage>(`${SITE.apiBase}/api/history/events`, { params });
+  }
+
+  historyEvent(slug: string): Observable<HistoryEventDetailDto> {
+    return this.http.get<HistoryEventDetailDto>(`${SITE.apiBase}/api/history/events/${slug}`);
   }
 
   recordVisit(payload: { visitor_id:string; path:string; referrer:string|null }): Observable<void> {

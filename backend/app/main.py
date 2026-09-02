@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import get_settings
 from app.database import SessionLocal, current_site_lang, get_db
-from app.models import AnalyticsVisit, AnalyticsVisitor, ChangeLog, Conflict, ConflictPerson, CorrectionRequest, MaterialSubmission, Person, SitePage, Source, TimelineEvent, User
+from app.models import AnalyticsVisit, AnalyticsVisitor, ChangeLog, Conflict, ConflictPerson, CorrectionRequest, HistoryEvent, HistoryStatus, MaterialSubmission, Person, SitePage, Source, TimelineEvent, User
 from app.schemas import (
     ConflictCreate,
     ConflictListOut,
@@ -45,6 +45,7 @@ from app.schemas import (
     SitePageIn,
     SitePageOut,
 )
+from app.history_api import router as history_router
 from app.security import create_token, current_user, seed_admin, verify_password
 
 settings = get_settings()
@@ -79,6 +80,9 @@ async def select_site_language(request: Request, call_next):
         return await call_next(request)
     finally:
         current_site_lang.reset(token)
+
+
+app.include_router(history_router)
 
 
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir / "ru"), name="uploads-ru")
@@ -272,7 +276,14 @@ def sitemap(db: Session = Depends(get_db)) -> Response:
         f"<url><loc>{base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>",
         f"<url><loc>{base}/archive</loc><changefreq>daily</changefreq><priority>0.9</priority></url>",
         f"<url><loc>{base}/people</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>",
+        f"<url><loc>{base}/history</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>",
     ]
+    history = db.scalars(
+        select(HistoryEvent).where(
+            HistoryEvent.is_published.is_(True),
+            HistoryEvent.status == HistoryStatus.PUBLISHED,
+        ).order_by(HistoryEvent.updated_at.desc())
+    ).all()
     # Служебные страницы попадают в карту, только если опубликованы.
     static_pages = db.scalars(select(SitePage).where(SitePage.is_published.is_(True))).all()
     urls.extend(
@@ -287,6 +298,10 @@ def sitemap(db: Session = Depends(get_db)) -> Response:
     urls.extend(
         f"<url><loc>{base}/people/{item.slug}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>"
         for item in people
+    )
+    urls.extend(
+        f"<url><loc>{base}/history/{item.slug}</loc><lastmod>{item.updated_at.date().isoformat()}</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>"
+        for item in history
     )
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + "".join(urls) + "</urlset>"
     return Response(xml, media_type="application/xml")

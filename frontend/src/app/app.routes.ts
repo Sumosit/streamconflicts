@@ -5,6 +5,8 @@ export const routes: Routes = [
   { path: '', pathMatch: 'full', loadComponent: () => import('./public/home-route').then(m => m.HomeRoute) },
   { path: 'conflicts/:slug', loadComponent: () => import('./conflict-page/conflict-page').then(m => m.ConflictPage) },
   { path: 'archive', loadComponent: () => import('./public/archive-page').then(m => m.ArchivePage) },
+  { path: 'history', loadComponent: () => import('./public/history-page').then(m => m.HistoryPage) },
+  { path: 'history/:slug', loadComponent: () => import('./public/history-event-page').then(m => m.HistoryEventPage) },
   { path: 'people', loadComponent: () => import('./public/people-page').then(m => m.PeoplePage) },
   { path: 'people/:slug', loadComponent: () => import('./public/person-page').then(m => m.PersonPage) },
   { path: 'about', loadComponent: () => import('./public/about-page').then(m => m.AboutPage), data: { pageSlug: 'about' } },

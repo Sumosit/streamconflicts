@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
@@ -228,3 +228,92 @@ class SitePageOut(SitePageIn):
     slug: str
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- История стриминга -------------------------------------------------------
+
+
+class HistoryCategoryNode(BaseModel):
+    id: int
+    slug: str
+    title: str
+    is_platform: bool
+    event_count: int
+    children: list["HistoryCategoryNode"] = Field(default_factory=list)
+
+
+class HistoryBreadcrumb(BaseModel):
+    slug: str
+    title: str
+
+
+class HistorySourceOut(BaseModel):
+    id: int
+    url: str
+    title: str
+    publisher: str | None = None
+    published_at: date | None = None
+    language: str | None = None
+    source_status: str
+    is_available: bool
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HistoryImageOut(BaseModel):
+    id: int
+    file_url: str | None
+    source_url: str | None
+    author: str | None
+    license: str | None
+    is_cover: bool
+    caption: str | None
+    alt_text: str | None
+
+
+class HistoryPersonRefOut(BaseModel):
+    id: int
+    slug: str
+    name: str
+    initials: str
+    avatar_url: str | None
+    site_lang: str
+    relation: str
+    role: str | None
+
+
+class HistoryEventOut(BaseModel):
+    id: int
+    slug: str
+    title: str
+    summary: str
+    language: str
+    # Перевод на язык сайта отсутствует, показан другой язык.
+    translation_missing: bool
+    date_start: date | None
+    date_end: date | None
+    date_precision: str
+    year: int | None
+    region: str
+    importance: int
+    cover_image_url: str | None
+    category_slug: str | None
+    category_title: str | None
+
+
+class HistoryEventListOut(BaseModel):
+    total: int
+    page: int
+    per_page: int
+    items: list[HistoryEventOut]
+
+
+class HistoryEventDetailOut(HistoryEventOut):
+    content: str
+    historical_context: str
+    consequences: str
+    available_languages: list[str]
+    breadcrumbs: list[HistoryBreadcrumb]
+    sources: list[HistorySourceOut]
+    images: list[HistoryImageOut]
+    people: list[HistoryPersonRefOut]
+    related: list[HistoryEventOut]
