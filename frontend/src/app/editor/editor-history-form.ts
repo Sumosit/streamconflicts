@@ -58,7 +58,7 @@ function toDraft(source: Partial<TranslationDraft> | undefined): TranslationDraf
   <label class="history-check"><input type="checkbox" [(ngModel)]="model.is_published"> Показывать на сайте</label>
   <label class="history-check"><input type="checkbox" [(ngModel)]="model.needs_verification"> Требует проверки</label>
   <br><br>
-  <label>Основной раздел<select [(ngModel)]="model.primary_category_id"><option [ngValue]="null">Не выбран</option>@for(item of categories();track item.id){<option [ngValue]="item.id">{{item.path}}</option>}</select></label>
+  <label>Основной раздел<select [ngModel]="model.primary_category_id" (ngModelChange)="setPrimary($event)"><option [ngValue]="null">Не выбран</option>@for(item of categories();track item.id){<option [ngValue]="item.id">{{item.path}}</option>}</select></label>
   <p class="muted">Дополнительные разделы: событие может лежать сразу в нескольких.</p>
   <div class="picker-list">@for(item of categories();track item.id){<label class="history-check"><input type="checkbox" [checked]="model.category_ids.includes(item.id)" (change)="toggleCategory(item.id)"> {{item.path}}</label>}</div>
   <br>
@@ -204,10 +204,24 @@ export class EditorHistoryForm{
  protected reviewLabel(value:string):string{
   return ({candidate:'Кандидат, не показывается',approved:'Подтверждено',rejected:'Отклонено'} as Record<string,string>)[value]||value;
  }
+ /** Основной раздел и список привязок - одно и то же поле для редактора:
+  * выбрать раздел в списке сверху и не отметить его галочкой ниже означало бы
+  * сохранить событие вообще без раздела. */
+ protected setPrimary(id:number|null):void{
+  this.model.primary_category_id=id;
+  if(id!==null&&!this.model.category_ids.includes(id))this.model.category_ids.push(id);
+ }
  protected toggleCategory(id:number):void{
   const list=this.model.category_ids;
   const index=list.indexOf(id);
-  index===-1?list.push(id):list.splice(index,1);
+  if(index===-1){
+   list.push(id);
+   if(this.model.primary_category_id===null)this.model.primary_category_id=id;
+   return;
+  }
+  list.splice(index,1);
+  // Сняли галочку с основного - основным становится первый оставшийся.
+  if(this.model.primary_category_id===id)this.model.primary_category_id=list[0]??null;
  }
  protected addSource():void{
   this.model.sources.push({url:'',title:'',publisher:null,published_at:null,language:null,source_status:'primary',sort_order:this.model.sources.length});
@@ -306,7 +320,9 @@ export class EditorHistoryForm{
    needs_verification:this.model.needs_verification,
    status:this.model.status,
    is_published:this.model.is_published,
-   category_ids:this.model.category_ids,
+   category_ids:this.model.primary_category_id!==null&&!this.model.category_ids.includes(this.model.primary_category_id)
+    ?[...this.model.category_ids,this.model.primary_category_id]
+    :this.model.category_ids,
    primary_category_id:this.model.primary_category_id,
    translations,
    sources:this.model.sources.filter(source=>source.url.trim()).map((source,index)=>({...source,sort_order:index,title:source.title||source.url})),
