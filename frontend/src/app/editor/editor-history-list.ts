@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 import { ApiService, HistoryAdminRowDto, HistoryCategoryAdminDto } from '../api.service';
 
 const PER_PAGE = 30;
@@ -44,9 +44,7 @@ const PER_PAGE = 30;
    </div>
    <div class="actions">
     <a class="button" [routerLink]="['/editor/history',item.id]">Редактировать</a>
-    <button class="button danger" type="button" (click)="remove(item)"
-            [disabled]="item.is_published||busy()===item.id"
-            [title]="item.is_published?'Сначала снимите событие с публикации в карточке':'Удалить событие'">Удалить</button>
+    <button class="button danger" type="button" (click)="remove(item)" [disabled]="busy()===item.id">Удалить</button>
    </div>
   </article>
  }@empty{<div class="panel">{{loading()?'Загружаем...':'Событий по заданным условиям нет.'}}</div>}
@@ -107,12 +105,21 @@ export class EditorHistoryList{
  protected reset():void{void this.router.navigate([],{relativeTo:this.route,queryParams:{}});}
  protected goTo(page:number):void{if(page<1||page>this.pages())return;this.patch({page:page===1?null:page});}
 
+ /** Опубликованное событие сервер удалять не даёт, и это правильно: удаление
+  * вслепую убрало бы страницу, на которую уже есть ссылки. Но блокировать
+  * кнопку молча нельзя - вместо этого спрашиваем и снимаем с публикации сами. */
  protected remove(item:HistoryAdminRowDto):void{
   const label=`«${item.title}»`;
-  if(!window.confirm(`Удалить событие ${label}? Вместе с ним удалятся переводы, источники, изображения и связи с людьми.`))return;
+  const question=item.is_published
+   ? `Событие ${label} опубликовано. Снять с публикации и удалить? Вместе с ним удалятся переводы, источники, изображения и связи с людьми.`
+   : `Удалить событие ${label}? Вместе с ним удалятся переводы, источники, изображения и связи с людьми.`;
+  if(!window.confirm(question))return;
   this.busy.set(item.id);
   this.error.set('');
-  this.api.deleteHistoryEvent(item.id).subscribe({
+  const start=item.is_published
+   ? this.api.updateHistoryEvent(item.id,{is_published:false,status:'draft'}).pipe(switchMap(()=>this.api.deleteHistoryEvent(item.id)))
+   : this.api.deleteHistoryEvent(item.id);
+  start.subscribe({
    next:()=>{this.busy.set(null);this.load();},
    error:response=>{
     this.busy.set(null);
