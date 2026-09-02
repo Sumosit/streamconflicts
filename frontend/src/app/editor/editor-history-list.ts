@@ -42,11 +42,17 @@ const PER_PAGE = 30;
      <span>людей: {{item.people_count}}</span>
     </p>
    </div>
-   <a class="button" [routerLink]="['/editor/history',item.id]">Редактировать</a>
+   <div class="actions">
+    <a class="button" [routerLink]="['/editor/history',item.id]">Редактировать</a>
+    <button class="button danger" type="button" (click)="remove(item)"
+            [disabled]="item.is_published||busy()===item.id"
+            [title]="item.is_published?'Сначала снимите событие с публикации в карточке':'Удалить событие'">Удалить</button>
+   </div>
   </article>
  }@empty{<div class="panel">{{loading()?'Загружаем...':'Событий по заданным условиям нет.'}}</div>}
 </section>
 
+@if(error()){<p class="error">{{error()}}</p>}
 @if(pages()>1){<div class="people-io-row"><button class="button" type="button" (click)="goTo(page()-1)" [disabled]="page()===1">← Назад</button><span class="muted">{{page()}} / {{pages()}}</span><button class="button" type="button" (click)="goTo(page()+1)" [disabled]="page()===pages()">Вперёд →</button></div>}
 </main>`,styleUrl:'./editor.scss'})
 export class EditorHistoryList{
@@ -68,6 +74,9 @@ export class EditorHistoryList{
  protected readonly noSources=signal(false);
  protected readonly noImages=signal(false);
  protected readonly toVerify=signal(false);
+ protected readonly error=signal('');
+ /** id события, которое сейчас удаляется: блокируем только его кнопку. */
+ protected readonly busy=signal<number|null>(null);
 
  constructor(){
   this.api.historyAdminCategories().subscribe(rows=>this.categories.set(rows));
@@ -97,6 +106,20 @@ export class EditorHistoryList{
  }
  protected reset():void{void this.router.navigate([],{relativeTo:this.route,queryParams:{}});}
  protected goTo(page:number):void{if(page<1||page>this.pages())return;this.patch({page:page===1?null:page});}
+
+ protected remove(item:HistoryAdminRowDto):void{
+  const label=`«${item.title}»`;
+  if(!window.confirm(`Удалить событие ${label}? Вместе с ним удалятся переводы, источники, изображения и связи с людьми.`))return;
+  this.busy.set(item.id);
+  this.error.set('');
+  this.api.deleteHistoryEvent(item.id).subscribe({
+   next:()=>{this.busy.set(null);this.load();},
+   error:response=>{
+    this.busy.set(null);
+    this.error.set(response.error?.detail||`Не удалось удалить событие ${label}`);
+   },
+  });
+ }
 
  protected statusLabel(value:string):string{
   return ({draft:'Черновик',review:'На проверке',published:'Опубликовано',rejected:'Отклонено'} as Record<string,string>)[value]||value;
