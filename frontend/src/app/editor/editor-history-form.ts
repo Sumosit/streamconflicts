@@ -103,13 +103,33 @@ function toDraft(source: Partial<TranslationDraft> | undefined): TranslationDraf
 
  @case('images'){<section class="panel">
   <div class="section-head"><h2>Изображения</h2></div>
-  <p class="muted">Ссылки из импорта приходят кандидатами и на сайт не попадают, пока их не подтвердят. Загрузка файла по ссылке появится отдельно.</p>
+  @if(!id){<p class="muted">Сохраните событие, потом добавляйте изображения.</p>}@else{
+  <p class="muted">Ссылка становится картинкой только после скачивания: чужой адрес может отвалиться в любой момент, а права на изображение проверяет человек.</p>
+  <div class="people-io-row">
+   <label>Добавить по ссылке<input [(ngModel)]="newImageUrl" placeholder="https://..."></label>
+   <button class="button" type="button" (click)="addImage()" [disabled]="imageBusy()">Добавить</button>
+   <label>Или загрузить файл<input type="file" accept="image/jpeg,image/png,image/webp" (change)="uploadImage($any($event.target))"></label>
+  </div>
+  @if(imageError()){<p class="error">{{imageError()}}</p>}
   @for(image of model.images;track image.id){<article class="source-box">
    <div class="source-box-head"><b>{{reviewLabel(image.review_status)}}</b>@if(image.is_cover){<span class="badge">ОБЛОЖКА</span>}</div>
-   @if(image.file_url){<img class="editor-cover" [src]="image.file_url" alt="">}
+   @if(image.file_url){<img class="editor-cover" [src]="image.file_url" alt="">}@else{<p class="muted">Файл ещё не скачан — на сайте не показывается.</p>}
    <p class="muted">{{image.source_url||image.file_url}}</p>
-   <p class="muted">{{image.caption['ru']||image.caption['en']||'Без подписи'}}</p>
-  </article>}@empty{<p class="muted">Изображений нет. Событие можно опубликовать и без них.</p>}
+   <div class="grid">
+    <label>Подпись RU<input [(ngModel)]="image.caption['ru']"></label>
+    <label>Подпись EN<input [(ngModel)]="image.caption['en']"></label>
+    <label>Автор<input [(ngModel)]="image.author"></label>
+    <label>Лицензия<input [(ngModel)]="image.license"></label>
+   </div>
+   <div class="people-io-row">
+    @if(image.source_url){<button class="button" type="button" (click)="fetchImage(image)" [disabled]="imageBusy()">{{image.file_url?'Скачать заново':'Скачать файл'}}</button>}
+    <button class="button" type="button" (click)="saveImage(image)" [disabled]="imageBusy()">Сохранить подписи</button>
+    @if(image.review_status!=='approved'){<button class="button primary" type="button" (click)="setReview(image,'approved')" [disabled]="imageBusy()||!image.file_url">Подтвердить</button>}
+    @if(image.review_status!=='rejected'){<button class="button" type="button" (click)="setReview(image,'rejected')" [disabled]="imageBusy()">Отклонить</button>}
+    @if(!image.is_cover&&image.file_url){<button class="button" type="button" (click)="setCover(image)" [disabled]="imageBusy()">Сделать обложкой</button>}
+    <button class="button danger" type="button" (click)="removeImage(image)" [disabled]="imageBusy()">Удалить</button>
+   </div>
+  </article>}@empty{<p class="muted">Изображений нет. Событие можно опубликовать и без них.</p>}}
  </section>}
 
  @case('people'){<section class="panel">
@@ -199,6 +219,56 @@ export class EditorHistoryForm{
   this.personQuery.set('');
   this.found.set([]);
  }
+ protected newImageUrl='';
+ protected readonly imageBusy=signal(false);
+ protected readonly imageError=signal('');
+
+ protected addImage():void{
+  const url=this.newImageUrl.trim();
+  if(!this.id||!url)return;
+  this.runImage(this.api.addHistoryImage(this.id,{source_url:url}),()=>this.newImageUrl='');
+ }
+ protected uploadImage(input:HTMLInputElement):void{
+  const file=input.files?.[0];
+  if(!this.id||!file)return;
+  this.runImage(this.api.uploadHistoryImage(this.id,file),()=>input.value='');
+ }
+ protected fetchImage(image:HistoryImageAdminDto):void{
+  this.runImage(this.api.fetchHistoryImage(image.id));
+ }
+ protected saveImage(image:HistoryImageAdminDto):void{
+  this.runImage(this.api.updateHistoryImage(image.id,{
+   caption:image.caption,author:image.author,license:image.license,
+  }));
+ }
+ protected setReview(image:HistoryImageAdminDto,status:'approved'|'rejected'):void{
+  this.runImage(this.api.updateHistoryImage(image.id,{review_status:status}));
+ }
+ protected setCover(image:HistoryImageAdminDto):void{
+  this.runImage(this.api.updateHistoryImage(image.id,{is_cover:true}));
+ }
+ protected removeImage(image:HistoryImageAdminDto):void{
+  if(!window.confirm('Удалить изображение?'))return;
+  this.runImage(this.api.deleteHistoryImage(image.id));
+ }
+
+ /** Любое действие с картинкой перечитывает событие: статусы и обложка
+  * меняются на сервере, и держать их копию в форме — верный способ разойтись. */
+ private runImage(request:{subscribe:Function},after?:()=>void):void{
+  this.imageBusy.set(true);this.imageError.set('');
+  request.subscribe({
+   next:()=>{
+    this.imageBusy.set(false);
+    after?.();
+    if(this.id)this.api.historyAdminEvent(this.id).subscribe(item=>this.model.images=item.images);
+   },
+   error:(response:any)=>{
+    this.imageBusy.set(false);
+    this.imageError.set(response.error?.detail||'Не удалось выполнить действие с изображением');
+   },
+  });
+ }
+
  protected removePerson(link:HistoryEventPersonDto):void{
   this.model.people=this.model.people.filter(item=>item.person_id!==link.person_id);
  }

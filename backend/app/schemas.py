@@ -529,3 +529,72 @@ class HistoryImportReportOut(BaseModel):
     unknown_categories: list[str]
     created_events: int = 0
     updated_events: int = 0
+
+
+# --- Очередь исследования ----------------------------------------------------
+
+
+class HistoryResearchBatchIn(BaseModel):
+    period_start: date | None = None
+    period_end: date | None = None
+    region: str = Field(default="global", pattern=r"^(global|ru|en|other|all)$")
+    category_id: int | None = None
+    status: str = Field(default="planned", pattern=r"^(planned|researching|imported|reviewed|complete)$")
+    notes: str | None = None
+
+
+class HistoryResearchBatchUpdate(BaseModel):
+    status: str | None = Field(default=None, pattern=r"^(planned|researching|imported|reviewed|complete)$")
+    notes: str | None = None
+    import_id: int | None = None
+
+
+class HistoryResearchPlanIn(BaseModel):
+    year_from: int = Field(ge=1990, le=2100)
+    year_to: int = Field(ge=1990, le=2100)
+    region: str = Field(default="global", pattern=r"^(global|ru|en|other|all)$")
+    # Год целиком или разбивка по месяцам для насыщенных периодов.
+    split: str = Field(default="year", pattern=r"^(year|month)$")
+    category_ids: list[int] | None = None
+
+
+class HistoryResearchBatchOut(BaseModel):
+    id: int
+    period_start: date | None
+    period_end: date | None
+    region: str
+    category_id: int | None
+    category_title: str | None
+    status: str
+    prompt_version: int
+    import_id: int | None
+    notes: str | None
+    # Сколько событий этого среза уже в базе: они уйдут в запрос списком.
+    known_count: int
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class HistoryPromptOut(BaseModel):
+    prompt: str
+    known_count: int
+    characters: int
+
+
+# --- Изображения истории -----------------------------------------------------
+
+
+class HistoryImageCreateIn(BaseModel):
+    source_url: str = Field(max_length=2000)
+    author: str | None = Field(default=None, max_length=200)
+    license: str | None = Field(default=None, max_length=120)
+
+
+class HistoryImageUpdateIn(BaseModel):
+    author: str | None = None
+    license: str | None = None
+    sort_order: int | None = None
+    is_cover: bool | None = None
+    review_status: str | None = Field(default=None, pattern=r"^(candidate|approved|rejected)$")
+    caption: dict[str, str] | None = None
+    alt_text: dict[str, str] | None = None

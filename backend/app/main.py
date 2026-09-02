@@ -48,6 +48,8 @@ from app.schemas import (
     SitePageOut,
 )
 from app.history_admin import router as history_admin_router
+from app.history_images import router as history_images_router
+from app.history_research import router as history_research_router
 from app.history_api import router as history_router
 from app.security import create_token, current_user, seed_admin, verify_password
 
@@ -55,6 +57,7 @@ settings = get_settings()
 settings.upload_dir.mkdir(parents=True, exist_ok=True)
 (settings.upload_dir / "ru").mkdir(parents=True, exist_ok=True)
 (settings.upload_dir / "en").mkdir(parents=True, exist_ok=True)
+(settings.upload_dir / "history").mkdir(parents=True, exist_ok=True)
 
 
 @asynccontextmanager
@@ -87,8 +90,11 @@ async def select_site_language(request: Request, call_next):
 
 app.include_router(history_router)
 app.include_router(history_admin_router)
+app.include_router(history_images_router)
+app.include_router(history_research_router)
 
 
+app.mount("/uploads/history", StaticFiles(directory=settings.upload_dir / "history"), name="uploads-history")
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir / "ru"), name="uploads-ru")
 app.mount("/en/uploads", StaticFiles(directory=settings.upload_dir / "en"), name="uploads-en")
 

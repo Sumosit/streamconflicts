@@ -18,6 +18,7 @@ export const routes: Routes = [
   { path: 'editor/conflicts/:id/preview', loadComponent: () => import('./conflict-page/conflict-page').then(m => m.ConflictPage), canActivate: [editorGuard], data: { preview: true } },
   { path: 'editor/conflicts/:id', loadComponent: () => import('./editor/editor-form').then(m => m.EditorForm), canActivate: [editorGuard] },
   { path: 'editor/history', loadComponent: () => import('./editor/editor-history-list').then(m => m.EditorHistoryList), canActivate: [editorGuard] },
+  { path: 'editor/history/research', loadComponent: () => import('./editor/editor-history-research').then(m => m.EditorHistoryResearch), canActivate: [editorGuard] },
   { path: 'editor/history/import', loadComponent: () => import('./editor/editor-history-import').then(m => m.EditorHistoryImport), canActivate: [editorGuard] },
   { path: 'editor/history/new', loadComponent: () => import('./editor/editor-history-form').then(m => m.EditorHistoryForm), canActivate: [editorGuard] },
   { path: 'editor/history/:id', loadComponent: () => import('./editor/editor-history-form').then(m => m.EditorHistoryForm), canActivate: [editorGuard] },

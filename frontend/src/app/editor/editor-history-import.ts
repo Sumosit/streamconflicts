@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { ApiService, HistoryImportMode, HistoryImportReportDto } from '../api.service';
 
 @Component({selector:'app-editor-history-import',imports:[FormsModule,RouterLink],template:`<main class="editor-shell">
-<header class="editor-header"><a routerLink="/editor/history"><b>← История</b></a></header>
+<header class="editor-header"><a routerLink="/editor/history"><b>← История</b></a><nav><a class="button" routerLink="/editor/history/research">Очередь исследования</a></nav></header>
 <div class="section-head"><div><h1>Импорт исследования</h1><p class="muted">Формат streamconflicts-history, версия 1. Ничего не публикуется: события приходят черновиками.</p></div></div>
 
 <section class="panel">

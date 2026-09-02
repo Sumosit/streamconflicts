@@ -275,6 +275,25 @@ export interface HistoryAdminQuery {
   perPage?: number;
 }
 
+export interface HistoryResearchBatchDto {
+  id: number;
+  period_start: string | null;
+  period_end: string | null;
+  region: string;
+  category_id: number | null;
+  category_title: string | null;
+  status: 'planned' | 'researching' | 'imported' | 'reviewed' | 'complete';
+  prompt_version: number;
+  import_id: number | null;
+  notes: string | null;
+  /** Сколько событий этого среза уже в базе — они уйдут в запрос списком. */
+  known_count: number;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface HistoryPromptDto { prompt: string; known_count: number; characters: number }
+
 export type HistoryImportMode = 'validate' | 'create' | 'create_and_update' | 'translations_only' | 'sources_only';
 
 export interface HistoryImportPlanDto {
@@ -346,6 +365,54 @@ export class ApiService {
 
   conflict(slug: string): Observable<ConflictDto> {
     return this.http.get<ConflictDto>(`${SITE.apiBase}/api/conflicts/${slug}`);
+  }
+
+  historyBatches(status: string | null = null): Observable<HistoryResearchBatchDto[]> {
+    let params = new HttpParams();
+    if (status) params = params.set('status', status);
+    return this.http.get<HistoryResearchBatchDto[]>(`${SITE.apiBase}/api/admin/history/research/batches`, { params });
+  }
+
+  createHistoryBatch(payload: unknown): Observable<HistoryResearchBatchDto> {
+    return this.http.post<HistoryResearchBatchDto>(`${SITE.apiBase}/api/admin/history/research/batches`, payload);
+  }
+
+  planHistoryBatches(payload: unknown): Observable<HistoryResearchBatchDto[]> {
+    return this.http.post<HistoryResearchBatchDto[]>(`${SITE.apiBase}/api/admin/history/research/batches/plan`, payload);
+  }
+
+  updateHistoryBatch(id: number, payload: unknown): Observable<HistoryResearchBatchDto> {
+    return this.http.patch<HistoryResearchBatchDto>(`${SITE.apiBase}/api/admin/history/research/batches/${id}`, payload);
+  }
+
+  deleteHistoryBatch(id: number): Observable<void> {
+    return this.http.delete<void>(`${SITE.apiBase}/api/admin/history/research/batches/${id}`);
+  }
+
+  historyBatchPrompt(id: number): Observable<HistoryPromptDto> {
+    return this.http.get<HistoryPromptDto>(`${SITE.apiBase}/api/admin/history/research/batches/${id}/prompt`);
+  }
+
+  addHistoryImage(eventId: number, payload: unknown): Observable<HistoryImageAdminDto> {
+    return this.http.post<HistoryImageAdminDto>(`${SITE.apiBase}/api/admin/history/events/${eventId}/images`, payload);
+  }
+
+  fetchHistoryImage(imageId: number): Observable<HistoryImageAdminDto> {
+    return this.http.post<HistoryImageAdminDto>(`${SITE.apiBase}/api/admin/history/images/${imageId}/fetch`, {});
+  }
+
+  uploadHistoryImage(eventId: number, file: File): Observable<HistoryImageAdminDto> {
+    const form = new FormData();
+    form.append('image', file);
+    return this.http.post<HistoryImageAdminDto>(`${SITE.apiBase}/api/admin/history/events/${eventId}/images/upload`, form);
+  }
+
+  updateHistoryImage(imageId: number, payload: unknown): Observable<HistoryImageAdminDto> {
+    return this.http.patch<HistoryImageAdminDto>(`${SITE.apiBase}/api/admin/history/images/${imageId}`, payload);
+  }
+
+  deleteHistoryImage(imageId: number): Observable<void> {
+    return this.http.delete<void>(`${SITE.apiBase}/api/admin/history/images/${imageId}`);
   }
 
   historyAdminCategories(): Observable<HistoryCategoryAdminDto[]> {
