@@ -159,6 +159,153 @@ export interface HistoryEventDetailDto extends HistoryEventDto {
 
 export interface HistoryEventsPage { items: HistoryEventDto[]; total: number; page: number; per_page: number }
 
+export interface HistoryCategoryAdminDto {
+  id: number;
+  parent_id: number | null;
+  slug: string;
+  title: string;
+  /** Полный путь «Платформы / Twitch / Покупка Amazon» для выпадающих списков. */
+  path: string;
+  is_platform: boolean;
+  depth: number;
+}
+
+export interface HistoryTranslationDraft {
+  title: string;
+  summary: string;
+  content: string;
+  historical_context: string;
+  consequences: string;
+  translation_status: 'missing' | 'draft' | 'machine' | 'reviewed';
+}
+
+export interface HistorySourceDraft {
+  url: string;
+  title: string;
+  publisher: string | null;
+  published_at: string | null;
+  language: string | null;
+  source_status: string;
+  sort_order: number;
+}
+
+export interface HistoryImageAdminDto {
+  id: number;
+  file_url: string | null;
+  source_url: string | null;
+  author: string | null;
+  license: string | null;
+  taken_at: string | null;
+  sort_order: number;
+  is_cover: boolean;
+  review_status: 'candidate' | 'approved' | 'rejected';
+  caption: Record<string, string>;
+  alt_text: Record<string, string>;
+}
+
+export interface HistoryEventPersonDto {
+  id?: number;
+  person_id: number;
+  relation: string;
+  role: string | null;
+  name?: string;
+  slug?: string;
+  site_lang?: string;
+}
+
+export interface HistoryAdminRowDto {
+  id: number;
+  slug: string;
+  title: string;
+  date_start: string | null;
+  date_precision: string;
+  year: number | null;
+  region: string;
+  status: string;
+  is_published: boolean;
+  importance: number;
+  confidence: number;
+  needs_verification: boolean;
+  ru_status: string | null;
+  en_status: string | null;
+  source_count: number;
+  image_count: number;
+  people_count: number;
+  category_title: string | null;
+  updated_at: string;
+}
+
+export interface HistoryAdminListDto { total: number; page: number; per_page: number; items: HistoryAdminRowDto[] }
+
+export interface HistoryAdminDetailDto {
+  id: number;
+  slug: string;
+  external_id: string | null;
+  date_start: string | null;
+  date_end: string | null;
+  date_precision: string;
+  year: number | null;
+  region: string;
+  importance: number;
+  confidence: number;
+  needs_verification: boolean;
+  status: string;
+  is_published: boolean;
+  cover_image_url: string | null;
+  category_ids: number[];
+  primary_category_id: number | null;
+  translations: Record<string, HistoryTranslationDraft & { language: string }>;
+  sources: HistorySourceDraft[];
+  images: HistoryImageAdminDto[];
+  people: HistoryEventPersonDto[];
+  related_slugs: string[];
+  updated_at: string;
+}
+
+export interface HistoryAdminQuery {
+  query?: string | null;
+  status?: string | null;
+  region?: string | null;
+  categoryId?: number | null;
+  missingTranslation?: 'ru' | 'en' | null;
+  withoutSources?: boolean;
+  withoutImages?: boolean;
+  needsVerification?: boolean;
+  page?: number;
+  perPage?: number;
+}
+
+export type HistoryImportMode = 'validate' | 'create' | 'create_and_update' | 'translations_only' | 'sources_only';
+
+export interface HistoryImportPlanDto {
+  index: number;
+  external_id: string | null;
+  slug: string | null;
+  title: string;
+  action: 'create' | 'update' | 'skip' | 'error';
+  reason: string;
+  matched_event_id: number | null;
+  matched_slug: string | null;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface HistoryImportReportDto {
+  mode: string;
+  applied: boolean;
+  import_id: number | null;
+  total: number;
+  to_create: number;
+  to_update: number;
+  to_skip: number;
+  with_errors: number;
+  events: HistoryImportPlanDto[];
+  unmatched_people: string[];
+  unknown_categories: string[];
+  created_events: number;
+  updated_events: number;
+}
+
 export interface HistoryQuery {
   category?: string | null;
   region?: string | null;
@@ -199,6 +346,45 @@ export class ApiService {
 
   conflict(slug: string): Observable<ConflictDto> {
     return this.http.get<ConflictDto>(`${SITE.apiBase}/api/conflicts/${slug}`);
+  }
+
+  historyAdminCategories(): Observable<HistoryCategoryAdminDto[]> {
+    return this.http.get<HistoryCategoryAdminDto[]>(`${SITE.apiBase}/api/admin/history/categories`);
+  }
+
+  historyAdminEvents(options: HistoryAdminQuery = {}): Observable<HistoryAdminListDto> {
+    let params = new HttpParams();
+    if (options.query?.trim()) params = params.set('q', options.query.trim());
+    if (options.status) params = params.set('status', options.status);
+    if (options.region) params = params.set('region', options.region);
+    if (options.categoryId) params = params.set('category_id', options.categoryId);
+    if (options.missingTranslation) params = params.set('missing_translation', options.missingTranslation);
+    if (options.withoutSources) params = params.set('without_sources', true);
+    if (options.withoutImages) params = params.set('without_images', true);
+    if (options.needsVerification) params = params.set('needs_verification', true);
+    if (options.page) params = params.set('page', options.page);
+    if (options.perPage) params = params.set('per_page', options.perPage);
+    return this.http.get<HistoryAdminListDto>(`${SITE.apiBase}/api/admin/history/events`, { params });
+  }
+
+  historyAdminEvent(id: number): Observable<HistoryAdminDetailDto> {
+    return this.http.get<HistoryAdminDetailDto>(`${SITE.apiBase}/api/admin/history/events/${id}`);
+  }
+
+  createHistoryEvent(payload: unknown): Observable<HistoryAdminDetailDto> {
+    return this.http.post<HistoryAdminDetailDto>(`${SITE.apiBase}/api/admin/history/events`, payload);
+  }
+
+  updateHistoryEvent(id: number, payload: unknown): Observable<HistoryAdminDetailDto> {
+    return this.http.patch<HistoryAdminDetailDto>(`${SITE.apiBase}/api/admin/history/events/${id}`, payload);
+  }
+
+  deleteHistoryEvent(id: number): Observable<void> {
+    return this.http.delete<void>(`${SITE.apiBase}/api/admin/history/events/${id}`);
+  }
+
+  historyImport(mode: HistoryImportMode, payload: unknown, filename: string | null = null): Observable<HistoryImportReportDto> {
+    return this.http.post<HistoryImportReportDto>(`${SITE.apiBase}/api/admin/history/imports`, { mode, payload, filename });
   }
 
   historyCategories(): Observable<HistoryCategoryDto[]> {
