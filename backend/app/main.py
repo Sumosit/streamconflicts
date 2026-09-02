@@ -47,6 +47,7 @@ from app.schemas import (
     SitePageIn,
     SitePageOut,
 )
+from app.history_admin import router as history_admin_router
 from app.history_api import router as history_router
 from app.security import create_token, current_user, seed_admin, verify_password
 
@@ -85,6 +86,7 @@ async def select_site_language(request: Request, call_next):
 
 
 app.include_router(history_router)
+app.include_router(history_admin_router)
 
 
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir / "ru"), name="uploads-ru")

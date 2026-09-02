@@ -337,3 +337,195 @@ class HistoryEventDetailOut(HistoryEventOut):
     images: list[HistoryImageOut]
     people: list[HistoryPersonRefOut]
     related: list[HistoryEventOut]
+
+
+# --- Редактор истории --------------------------------------------------------
+
+
+class HistoryTranslationIn(BaseModel):
+    title: str = Field(max_length=300)
+    summary: str = ""
+    content: str = ""
+    historical_context: str = ""
+    consequences: str = ""
+    translation_status: str = Field(default="draft", pattern=r"^(missing|draft|machine|reviewed)$")
+
+
+class HistoryTranslationOut(HistoryTranslationIn):
+    language: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HistorySourceIn(BaseModel):
+    url: str = Field(max_length=2000)
+    title: str = Field(max_length=300)
+    publisher: str | None = Field(default=None, max_length=200)
+    published_at: date | None = None
+    language: str | None = Field(default=None, max_length=5)
+    source_status: str = "primary"
+    sort_order: int = 0
+
+
+class HistoryImageIn(BaseModel):
+    file_url: str | None = None
+    source_url: str | None = None
+    author: str | None = None
+    license: str | None = None
+    taken_at: date | None = None
+    sort_order: int = 0
+    is_cover: bool = False
+    review_status: str = Field(default="candidate", pattern=r"^(candidate|approved|rejected)$")
+    # Подпись на оба языка сразу: {"ru": "...", "en": "..."}
+    caption: dict[str, str] = Field(default_factory=dict)
+    alt_text: dict[str, str] = Field(default_factory=dict)
+
+
+class HistoryImageAdminOut(HistoryImageIn):
+    id: int
+
+
+class HistoryEventPersonIn(BaseModel):
+    person_id: int
+    relation: str = "participant"
+    role: str | None = Field(default=None, max_length=300)
+
+
+class HistoryEventPersonAdminOut(HistoryEventPersonIn):
+    id: int
+    name: str
+    slug: str
+    site_lang: str
+
+
+class HistoryEventWriteIn(BaseModel):
+    slug: str | None = Field(default=None, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=180)
+    external_id: str | None = Field(default=None, max_length=180)
+    date_start: date | None = None
+    date_end: date | None = None
+    date_precision: str = Field(default="day", pattern=r"^(day|month|year|period|unknown)$")
+    region: str = Field(default="global", pattern=r"^(global|ru|en|other)$")
+    importance: int = Field(default=50, ge=0, le=100)
+    confidence: int = Field(default=100, ge=0, le=100)
+    needs_verification: bool = False
+    status: str = Field(default="draft", pattern=r"^(draft|review|published|rejected)$")
+    is_published: bool = False
+    cover_image_url: str | None = None
+    category_ids: list[int] | None = None
+    primary_category_id: int | None = None
+    translations: dict[str, HistoryTranslationIn] | None = None
+    sources: list[HistorySourceIn] | None = None
+    people: list[HistoryEventPersonIn] | None = None
+    related_slugs: list[str] | None = None
+
+
+class HistoryEventPatchIn(HistoryEventWriteIn):
+    date_precision: str | None = Field(default=None, pattern=r"^(day|month|year|period|unknown)$")
+    region: str | None = Field(default=None, pattern=r"^(global|ru|en|other)$")
+    importance: int | None = Field(default=None, ge=0, le=100)
+    confidence: int | None = Field(default=None, ge=0, le=100)
+    needs_verification: bool | None = None
+    status: str | None = Field(default=None, pattern=r"^(draft|review|published|rejected)$")
+    is_published: bool | None = None
+
+
+class HistoryAdminRowOut(BaseModel):
+    id: int
+    slug: str
+    title: str
+    date_start: date | None
+    date_precision: str
+    year: int | None
+    region: str
+    status: str
+    is_published: bool
+    importance: int
+    confidence: int
+    needs_verification: bool
+    ru_status: str | None
+    en_status: str | None
+    source_count: int
+    image_count: int
+    people_count: int
+    category_title: str | None
+    updated_at: datetime
+
+
+class HistoryAdminListOut(BaseModel):
+    total: int
+    page: int
+    per_page: int
+    items: list[HistoryAdminRowOut]
+
+
+class HistoryAdminDetailOut(BaseModel):
+    id: int
+    slug: str
+    external_id: str | None
+    date_start: date | None
+    date_end: date | None
+    date_precision: str
+    year: int | None
+    region: str
+    importance: int
+    confidence: int
+    needs_verification: bool
+    status: str
+    is_published: bool
+    cover_image_url: str | None
+    category_ids: list[int]
+    primary_category_id: int | None
+    translations: dict[str, HistoryTranslationOut]
+    sources: list[HistorySourceIn]
+    images: list[HistoryImageAdminOut]
+    people: list[HistoryEventPersonAdminOut]
+    related_slugs: list[str]
+    updated_at: datetime
+
+
+class HistoryCategoryAdminOut(BaseModel):
+    id: int
+    parent_id: int | None
+    slug: str
+    title: str
+    # Полный путь для выпадающих списков: «Платформы / Twitch / Покупка Amazon».
+    path: str
+    is_platform: bool
+    depth: int
+
+
+# --- Импорт ------------------------------------------------------------------
+
+
+class HistoryImportIn(BaseModel):
+    mode: str = Field(pattern=r"^(validate|create|create_and_update|translations_only|sources_only)$")
+    payload: dict
+    filename: str | None = Field(default=None, max_length=300)
+
+
+class HistoryImportEventPlan(BaseModel):
+    index: int
+    external_id: str | None
+    slug: str | None
+    title: str
+    action: str
+    reason: str
+    matched_event_id: int | None = None
+    matched_slug: str | None = None
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class HistoryImportReportOut(BaseModel):
+    mode: str
+    applied: bool
+    import_id: int | None
+    total: int
+    to_create: int
+    to_update: int
+    to_skip: int
+    with_errors: int
+    events: list[HistoryImportEventPlan]
+    unmatched_people: list[str]
+    unknown_categories: list[str]
+    created_events: int = 0
+    updated_events: int = 0

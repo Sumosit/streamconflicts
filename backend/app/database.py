@@ -20,6 +20,9 @@ def configure_sqlite(dbapi_connection, _connection_record) -> None:
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.execute("PRAGMA busy_timeout=30000")
     cursor.close()
+    # LIKE в SQLite игнорирует регистр только для латиницы, поэтому поиск по
+    # русским заголовкам без своей функции не находит «Партнёрская» по «партнёрская».
+    dbapi_connection.create_function("py_lower", 1, lambda value: value.lower() if isinstance(value, str) else value)
 
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
