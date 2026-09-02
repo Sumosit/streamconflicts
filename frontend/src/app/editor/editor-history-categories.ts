@@ -23,14 +23,16 @@ type Draft = { ru: string; en: string; parent_id: number | null; slug: string; i
  @if(note()){<p class="success">{{note()}}</p>}
 </section>
 
+@if(items().length){<div class="people-io-row"><button class="button" type="button" (click)="expandAll()">Раскрыть все</button><button class="button" type="button" (click)="collapseAll()">Свернуть все</button></div>}
+
 <section class="list">
- @for(item of items();track item.id){
+ @for(item of visible();track item.id){
   <article class="list-row">
-   <div>
+   <div [style.paddingLeft.px]="item.depth*22">
     <span class="badge">{{item.slug}}@if(item.is_platform){ · ПЛОЩАДКА}@if(!item.is_published){ · СКРЫТ}</span>
-    <h3 [style.paddingLeft.px]="item.depth*18">{{item.title}}</h3>
+    <h3>@if(item.child_count){<button type="button" class="tree-toggle" [class.open]="!collapsed().has(item.id)" (click)="toggle(item)">▸</button>}{{item.title}}</h3>
     <span class="muted">{{item.path}}</span>
-    <p class="muted history-row-meta"><span>событий: {{item.event_count}}</span><span>вложенных: {{item.child_count}}</span><span>EN: {{item.titles['en']||'нет'}}</span></p>
+    <p class="muted history-row-meta"><span>событий: {{item.event_count}}</span>@if(item.child_count){<span>вложенных: {{item.child_count}}</span>}<span [class.warn]="!item.titles['en']">EN: {{item.titles['en']||'нет'}}</span></p>
    </div>
    <div class="actions">
     <button class="button" type="button" (click)="edit(item)">Изменить</button>
@@ -59,6 +61,7 @@ export class EditorHistoryCategories{
  private readonly api=inject(ApiService);
  protected readonly items=signal<HistoryCategoryAdminDto[]>([]);
  protected readonly editing=signal<HistoryCategoryAdminDto|null>(null);
+ protected readonly collapsed=signal<Set<number>>(new Set());
  protected readonly loading=signal(true);
  protected readonly busy=signal(false);
  protected readonly error=signal('');
@@ -68,6 +71,46 @@ export class EditorHistoryCategories{
  protected published=true;
 
  constructor(){this.load();}
+
+ /** Строка видна, если ни один из её предков не свёрнут. */
+ protected visible():HistoryCategoryAdminDto[]{
+  const hidden=this.collapsed();
+  if(!hidden.size)return this.items();
+  const byId=new Map(this.items().map(item=>[item.id,item]));
+  return this.items().filter(item=>{
+   let parent=item.parent_id;
+   while(parent!==null&&parent!==undefined){
+    if(hidden.has(parent))return false;
+    parent=byId.get(parent)?.parent_id??null;
+   }
+   return true;
+  });
+ }
+ protected toggle(item:HistoryCategoryAdminDto):void{
+  const next=new Set(this.collapsed());
+  next.has(item.id)?next.delete(item.id):next.add(item.id);
+  this.collapsed.set(next);
+ }
+ protected expandAll():void{this.collapsed.set(new Set());}
+ protected collapseAll():void{
+  this.collapsed.set(new Set(this.items().filter(item=>item.child_count).map(item=>item.id)));
+ }
+
+ /** Вся ветка вместе с самим разделом: нужна, чтобы честно сказать, что удалится. */
+ private branch(item:HistoryCategoryAdminDto):HistoryCategoryAdminDto[] {
+  const result=[item];
+  let grew=true;
+  while(grew){
+   grew=false;
+   const known=new Set(result.map(node=>node.id));
+   for(const candidate of this.items())
+    if(candidate.parent_id!==null&&known.has(candidate.parent_id)&&!known.has(candidate.id)){
+     result.push(candidate);
+     grew=true;
+    }
+  }
+  return result;
+ }
 
  /** Раздел нельзя вложить в самого себя или в собственного потомка. */
  protected parentOptions(item:HistoryCategoryAdminDto):HistoryCategoryAdminDto[]{
@@ -131,8 +174,20 @@ export class EditorHistoryCategories{
  }
 
  protected remove(item:HistoryCategoryAdminDto):void{
-  if(!window.confirm(`Удалить раздел «${item.title}»?`))return;
-  this.run(this.api.deleteHistoryCategory(item.id),()=>this.note.set('Раздел удалён'));
+  const branch=this.branch(item);
+  const nested=branch.length-1;
+  const events=branch.reduce((sum,node)=>sum+node.event_count,0);
+  const parts=[`Удалить раздел «${item.title}»`];
+  if(nested)parts.push(`вместе с ${nested} вложенными`);
+  let question=parts.join(' ')+'?';
+  if(events)question+=` К разделам привязано событий: ${events}. Сами события останутся, но потеряют раздел.`;
+  if(!window.confirm(question))return;
+  this.run(this.api.deleteHistoryCategory(item.id,nested>0||events>0),()=>{
+   this.note.set(nested?`Удалено разделов: ${branch.length}`:'Раздел удалён');
+   const next=new Set(this.collapsed());
+   branch.forEach(node=>next.delete(node.id));
+   this.collapsed.set(next);
+  });
  }
 
  private run(request:{subscribe:Function},after?:()=>void):void{

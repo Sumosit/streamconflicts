@@ -304,16 +304,47 @@ def reorder_categories(payload: HistoryCategoryOrderIn, _user: User = Depends(cu
     return category_rows(db)
 
 
+def subtree_ids(db: Session, root_id: int) -> list[int]:
+    collected = [root_id]
+    frontier = [root_id]
+    while frontier:
+        children = db.scalars(select(HistoryCategory.id).where(HistoryCategory.parent_id.in_(frontier))).all()
+        children = [item for item in children if item not in collected]
+        if not children:
+            break
+        collected.extend(children)
+        frontier = children
+    return collected
+
+
 @router.delete("/categories/{category_id}", status_code=204)
-def delete_category(category_id: int, _user: User = Depends(current_user), db: Session = Depends(get_db)) -> None:
+def delete_category(
+    category_id: int,
+    cascade: bool = False,
+    _user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Без cascade удаляем только пустой раздел, чтобы одно нажатие не снесло
+    поддерево незаметно. С cascade удаляем ветку целиком: события при этом
+    остаются, теряется только их привязка к разделу."""
     category = db.get(HistoryCategory, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
-    if db.scalar(select(func.count()).select_from(HistoryCategory).where(HistoryCategory.parent_id == category_id)):
-        raise HTTPException(status_code=409, detail="Сначала удалите или перенесите вложенные разделы")
-    if db.scalar(select(func.count()).select_from(HistoryEventCategory).where(HistoryEventCategory.category_id == category_id)):
-        raise HTTPException(status_code=409, detail="К разделу привязаны события, сначала перенесите их")
-    db.delete(category)
+
+    if not cascade:
+        if db.scalar(select(func.count()).select_from(HistoryCategory).where(HistoryCategory.parent_id == category_id)):
+            raise HTTPException(status_code=409, detail="Сначала удалите или перенесите вложенные разделы")
+        if db.scalar(select(func.count()).select_from(HistoryEventCategory).where(HistoryEventCategory.category_id == category_id)):
+            raise HTTPException(status_code=409, detail="К разделу привязаны события, сначала перенесите их")
+        db.delete(category)
+        db.commit()
+        return
+
+    # Удаляем снизу вверх: у родителя может стоять запрет на осиротевших детей.
+    for identifier in reversed(subtree_ids(db, category_id)):
+        node = db.get(HistoryCategory, identifier)
+        if node:
+            db.delete(node)
     db.commit()
 
 

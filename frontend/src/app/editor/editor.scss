@@ -81,3 +81,18 @@ textarea { resize:vertical; }
 
   .warn { color: var(--status-live); }
 }
+
+// Стрелка сворачивания ветки в дереве разделов.
+.tree-toggle {
+  width: 20px;
+  margin-right: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  transition: transform .15s;
+
+  &.open { transform: rotate(90deg); }
+  &:hover { color: var(--text-primary); }
+}

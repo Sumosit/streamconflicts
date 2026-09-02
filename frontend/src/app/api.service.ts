@@ -437,8 +437,10 @@ export class ApiService {
     return this.http.post<HistoryCategoryAdminDto[]>(`${SITE.apiBase}/api/admin/history/categories/order`, { ids });
   }
 
-  deleteHistoryCategory(id: number): Observable<void> {
-    return this.http.delete<void>(`${SITE.apiBase}/api/admin/history/categories/${id}`);
+  /** cascade удаляет раздел вместе со всей веткой; события остаются. */
+  deleteHistoryCategory(id: number, cascade = false): Observable<void> {
+    const params = cascade ? new HttpParams().set('cascade', true) : new HttpParams();
+    return this.http.delete<void>(`${SITE.apiBase}/api/admin/history/categories/${id}`, { params });
   }
 
   historyAdminEvents(options: HistoryAdminQuery = {}): Observable<HistoryAdminListDto> {
