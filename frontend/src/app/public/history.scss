@@ -21,6 +21,17 @@
   scrollbar-width: thin;
 }
 
+// Без заголовка первая строка «Все события» читается как один из разделов,
+// хотя она снимает фильтр, а не выбирает раздел.
+.history-menu-title {
+  display: block;
+  margin-bottom: 10px;
+  font: 700 10px var(--sans);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .history-branch {
   display: flex;
   align-items: center;

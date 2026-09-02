@@ -16,6 +16,7 @@ const PER_PAGE = 20;
 <span class="kicker">{{t.history.kicker}}</span><h1>{{heading()}}</h1><p class="lead">{{t.history.lead}}</p>
 <div class="history-layout">
 <aside class="history-menu" [attr.aria-label]="t.history.menuTitle">
+ <span class="history-menu-title">{{t.history.menuTitle}}</span>
  <button type="button" class="history-branch history-root" [class.active]="!category()" (click)="selectCategory(null)">{{t.history.allEvents}}<small>{{totalAll()}}</small></button>
  @for(node of tree();track node.id){<div class="history-node">
   <div class="history-branch" [class.active]="category()===node.slug">
