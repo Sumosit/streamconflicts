@@ -1,9 +1,12 @@
+from contextvars import ContextVar
+
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker, with_loader_criteria
 
 from app.config import get_settings
 
 settings = get_settings()
+current_site_lang: ContextVar[str] = ContextVar("current_site_lang", default=settings.site_lang)
 engine = create_engine(
     settings.database_url,
     connect_args={"check_same_thread": False, "timeout": 30},
@@ -24,6 +27,31 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 class Base(DeclarativeBase):
     pass
+
+
+@event.listens_for(Session, "do_orm_execute")
+def filter_localized_queries(execute_state) -> None:
+    if not execute_state.is_select or execute_state.execution_options.get("include_all_languages"):
+        return
+    from app.models import AnalyticsVisit, AnalyticsVisitor, Conflict, CorrectionRequest, MaterialSubmission, Person, SitePage
+
+    language = current_site_lang.get()
+    if language == "all":
+        return
+    for model in (AnalyticsVisit, AnalyticsVisitor, Conflict, CorrectionRequest, MaterialSubmission, Person, SitePage):
+        execute_state.statement = execute_state.statement.options(
+            with_loader_criteria(model, model.site_lang == language, include_aliases=True)
+        )
+
+
+@event.listens_for(Session, "before_flush")
+def assign_language_to_new_rows(session, _flush_context, _instances) -> None:
+    from app.models import AnalyticsVisit, AnalyticsVisitor, Conflict, CorrectionRequest, MaterialSubmission, Person, SitePage
+
+    language = current_site_lang.get()
+    for item in session.new:
+        if isinstance(item, (AnalyticsVisit, AnalyticsVisitor, Conflict, CorrectionRequest, MaterialSubmission, Person, SitePage)):
+            item.site_lang = language
 
 
 def get_db():

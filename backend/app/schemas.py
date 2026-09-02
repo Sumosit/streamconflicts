@@ -73,6 +73,19 @@ class PersonUpdate(BaseModel):
     entity_type: str | None = Field(default=None, pattern=r"^(streamer|media|organization|other)$")
 
 
+class PersonMergeIn(BaseModel):
+    target_id: int
+
+
+class AvatarCheckOut(BaseModel):
+    id: int
+    slug: str
+    name: str
+    avatar_url: str
+    ok: bool
+    detail: str
+
+
 class ConflictPersonIn(BaseModel):
     person_id: int
     relation: str

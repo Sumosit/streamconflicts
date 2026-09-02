@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     site_name: str = "Стримархив"
     site_base_url: str = "https://streamconflicts.com"
     site_description: str = "Нейтральный архив конфликтов стримеров: факты, хронология и первоисточники."
+    en_site_name: str = "StreamArchive"
+    en_site_description: str = "A neutral archive of streamer conflicts: facts, timelines and primary sources."
     site_path_prefix: str = ""
     # Путь соседней языковой версии на том же домене, например "en".
     # Указывается только у экземпляра, отдающего robots.txt в корне домена:
@@ -45,6 +47,18 @@ class Settings(BaseSettings):
     def site_root(self) -> str:
         """Полный адрес корня сайта, например https://streamconflicts.com/en."""
         return self.site_base_url.rstrip("/") + self.site_path
+
+    def path_for_language(self, language: str) -> str:
+        return "/en" if language == "en" else ""
+
+    def root_for_language(self, language: str) -> str:
+        return self.site_base_url.rstrip("/") + self.path_for_language(language)
+
+    def name_for_language(self, language: str) -> str:
+        return self.en_site_name if language == "en" else self.site_name
+
+    def description_for_language(self, language: str) -> str:
+        return self.en_site_description if language == "en" else self.site_description
 
     @property
     def cors_origin_list(self) -> list[str]:

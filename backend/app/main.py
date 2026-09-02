@@ -5,6 +5,8 @@ from pathlib import Path
 from email.utils import format_datetime
 from urllib.parse import urlparse
 from xml.sax.saxutils import escape
+from urllib.error import URLError
+from urllib.request import Request as UrlRequest, urlopen
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile, status
@@ -18,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import get_settings
-from app.database import SessionLocal, get_db
+from app.database import SessionLocal, current_site_lang, get_db
 from app.models import AnalyticsVisit, AnalyticsVisitor, ChangeLog, Conflict, ConflictPerson, CorrectionRequest, MaterialSubmission, Person, SitePage, Source, TimelineEvent, User
 from app.schemas import (
     ConflictCreate,
@@ -30,7 +32,9 @@ from app.schemas import (
     CorrectionAdminOut,
     CorrectionOut,
     CorrectionUpdate,
+    AvatarCheckOut,
     PersonIn,
+    PersonMergeIn,
     PersonOut,
     PersonUpdate,
     Token,
@@ -45,6 +49,8 @@ from app.security import create_token, current_user, seed_admin, verify_password
 
 settings = get_settings()
 settings.upload_dir.mkdir(parents=True, exist_ok=True)
+(settings.upload_dir / "ru").mkdir(parents=True, exist_ok=True)
+(settings.upload_dir / "en").mkdir(parents=True, exist_ok=True)
 
 
 @asynccontextmanager
@@ -62,7 +68,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
+
+
+@app.middleware("http")
+async def select_site_language(request: Request, call_next):
+    requested = request.headers.get("x-site-lang", settings.site_lang).lower()
+    language = requested if requested in {"ru", "en"} else settings.site_lang
+    token = current_site_lang.set(language)
+    try:
+        return await call_next(request)
+    finally:
+        current_site_lang.reset(token)
+
+
+app.mount("/uploads", StaticFiles(directory=settings.upload_dir / "ru"), name="uploads-ru")
+app.mount("/en/uploads", StaticFiles(directory=settings.upload_dir / "en"), name="uploads-en")
 
 
 def conflict_query():
@@ -82,7 +102,7 @@ def get_conflict_or_404(db: Session, conflict_id: int) -> Conflict:
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "environment": settings.app_env}
+    return {"status": "ok", "environment": settings.app_env, "language": current_site_lang.get()}
 
 
 BOT_MARKERS = ("bot", "crawler", "spider", "slurp", "preview", "facebookexternalhit", "telegrambot", "whatsapp")
@@ -97,8 +117,10 @@ def record_visit(payload: AnalyticsVisitIn, request: Request, db: Session = Depe
     forwarded = request.headers.get("x-forwarded-for", "")
     ip_address = (forwarded.split(",", 1)[0].strip() if forwarded else request.client.host if request.client else "unknown")[:64]
     day_start = datetime.combine(datetime.utcnow().date(), datetime.min.time())
+    language = current_site_lang.get()
+    visitor_id = f"{language}:{payload.visitor_id}"
     already_recorded = db.scalar(select(AnalyticsVisit.id).where(
-        AnalyticsVisit.visitor_id == payload.visitor_id,
+        AnalyticsVisit.visitor_id == visitor_id,
         AnalyticsVisit.path == path[:500],
         AnalyticsVisit.created_at >= day_start,
     ).limit(1))
@@ -110,16 +132,16 @@ def record_visit(payload: AnalyticsVisitIn, request: Request, db: Session = Depe
         if referrer_host in {"streamconflicts.com", "www.streamconflicts.com", "dev.streamconflicts.com"}:
             referrer = None
     db.add(AnalyticsVisit(
-        visitor_id=payload.visitor_id,
+        visitor_id=visitor_id,
         ip_address=ip_address,
         path=path[:500],
         referrer=referrer,
         user_agent=user_agent,
     ))
     now = datetime.utcnow()
-    visitor = db.get(AnalyticsVisitor, payload.visitor_id)
+    visitor = db.get(AnalyticsVisitor, visitor_id)
     if visitor is None:
-        db.add(AnalyticsVisitor(visitor_id=payload.visitor_id, first_seen=now, last_seen=now, visit_days=1, page_views=1))
+        db.add(AnalyticsVisitor(visitor_id=visitor_id, first_seen=now, last_seen=now, visit_days=1, page_views=1))
     else:
         if visitor.last_seen < day_start:
             visitor.visit_days += 1
@@ -133,9 +155,18 @@ def record_visit(payload: AnalyticsVisitIn, request: Request, db: Session = Depe
 @app.get("/api/admin/analytics")
 def analytics_summary(
     days: int = Query(default=30, ge=1, le=90),
+    site_lang: str = Query(default="all", pattern="^(ru|en|all)$"),
     _user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    language_token = current_site_lang.set(site_lang)
+    try:
+        return build_analytics_summary(days, site_lang, db)
+    finally:
+        current_site_lang.reset(language_token)
+
+
+def build_analytics_summary(days: int, site_lang: str, db: Session) -> dict:
     today = datetime.utcnow().date()
     since = datetime.combine(today - timedelta(days=days - 1), datetime.min.time())
     today_start = datetime.combine(today, datetime.min.time())
@@ -192,6 +223,7 @@ def analytics_summary(
     active_period_visitors = new_visitors + returning_visitors
     return {
         "days": days,
+        "site_lang": site_lang,
         "totals": {"views": visits, "visitors": visitors, "unique_ips": unique_ips, "raw_views": raw_views},
         "all_time": {
             "visitors": all_time_visitors,
@@ -216,18 +248,18 @@ def analytics_summary(
 def robots() -> Response:
     if settings.app_env != "production":
         return Response("User-agent: *\nDisallow: /\n", media_type="text/plain")
-    lines = ["User-agent: *", f"Disallow: {settings.site_path}/editor"]
-    if settings.alt_site_path:
-        lines.append(f"Disallow: {settings.alt_site_path}/editor")
-    lines += ["Disallow: /api/admin", "Disallow: /api/auth", f"Sitemap: {settings.site_root}/sitemap.xml"]
-    if settings.alt_site_path:
-        lines.append(f"Sitemap: {settings.site_base_url.rstrip('/')}{settings.alt_site_path}/sitemap.xml")
+    language = current_site_lang.get()
+    path = settings.path_for_language(language)
+    lines = ["User-agent: *", f"Disallow: {path}/editor"]
+    lines += ["Disallow: /api/admin", "Disallow: /api/auth", f"Sitemap: {settings.root_for_language(language)}/sitemap.xml"]
+    if language == "ru":
+        lines += ["Disallow: /en/editor", f"Sitemap: {settings.root_for_language('en')}/sitemap.xml"]
     return Response("\n".join(lines) + "\n", media_type="text/plain")
 
 
 @app.get("/api/seo/sitemap", include_in_schema=False)
 def sitemap(db: Session = Depends(get_db)) -> Response:
-    base = settings.site_root
+    base = settings.root_for_language(current_site_lang.get())
     conflicts = db.scalars(select(Conflict).where(Conflict.is_published.is_(True)).order_by(Conflict.updated_at.desc())).all()
     people = db.scalars(
         select(Person).join(ConflictPerson).join(Conflict).where(
@@ -263,7 +295,8 @@ def sitemap(db: Session = Depends(get_db)) -> Response:
 @app.get("/api/seo/rss", include_in_schema=False)
 def rss(db: Session = Depends(get_db)) -> Response:
     """Лента последних материалов: читалки, агрегаторы и боты автопостинга."""
-    base = settings.site_root
+    language = current_site_lang.get()
+    base = settings.root_for_language(language)
     conflicts = db.scalars(
         select(Conflict).where(Conflict.is_published.is_(True)).order_by(Conflict.updated_at.desc()).limit(30)
     ).all()
@@ -285,10 +318,10 @@ def rss(db: Session = Depends(get_db)) -> Response:
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>'
-        f"<title>{escape(settings.site_name)}</title>"
+        f"<title>{escape(settings.name_for_language(language))}</title>"
         f"<link>{escape(base)}</link>"
-        f"<description>{escape(settings.site_description)}</description>"
-        f"<language>{escape(settings.site_lang)}</language>"
+        f"<description>{escape(settings.description_for_language(language))}</description>"
+        f"<language>{escape(language)}</language>"
         f"<lastBuildDate>{format_datetime(updated.replace(tzinfo=timezone.utc))}</lastBuildDate>"
         f'<atom:link href="{escape(base)}/rss.xml" rel="self" type="application/rss+xml"/>'
         + "".join(items)
@@ -406,7 +439,7 @@ def admin_people(_user: User = Depends(current_user), db: Session = Depends(get_
 def create_conflict(payload: ConflictCreate, user: User = Depends(current_user), db: Session = Depends(get_db)) -> Conflict:
     item = Conflict(**payload.model_dump(exclude={"events", "people"}))
     if item.is_featured:
-        db.execute(sql_update(Conflict).values(is_featured=False))
+        db.execute(sql_update(Conflict).where(Conflict.site_lang == current_site_lang.get()).values(is_featured=False))
     if item.is_published:
         item.published_at = datetime.now(timezone.utc)
     for event_data in payload.events:
@@ -438,7 +471,10 @@ def update_conflict(conflict_id: int, payload: ConflictUpdate, user: User = Depe
     if payload.is_published is False:
         item.published_at = None
     if payload.is_featured is True:
-        db.execute(sql_update(Conflict).where(Conflict.id != conflict_id).values(is_featured=False))
+        db.execute(sql_update(Conflict).where(
+            Conflict.id != conflict_id,
+            Conflict.site_lang == current_site_lang.get(),
+        ).values(is_featured=False))
     if payload.events is not None:
         item.events.clear()
         db.flush()
@@ -485,6 +521,87 @@ def create_person(payload: PersonIn, _user: User = Depends(current_user), db: Se
         raise HTTPException(status_code=409, detail="Person slug already exists")
     db.refresh(person)
     return person
+
+
+def avatar_status(url: str) -> tuple[bool, str]:
+    """Проверяет, отдаётся ли по ссылке картинка. Телеграмные превью живут недолго."""
+    try:
+        request = UrlRequest(url, headers={"User-Agent": "Mozilla/5.0 (compatible; StreamArchiveBot)"})
+        with urlopen(request, timeout=8) as response:
+            content_type = response.headers.get("Content-Type", "")
+            if response.status == 200 and content_type.startswith("image"):
+                return True, content_type
+            return False, f"{response.status} {content_type or 'без типа'}"
+    except URLError as error:
+        return False, str(getattr(error, "reason", error))[:120]
+    except Exception as error:  # noqa: BLE001 — любая сетевая ошибка означает битую ссылку
+        return False, str(error)[:120]
+
+
+@app.get("/api/admin/people/avatars", response_model=list[AvatarCheckOut])
+def check_avatars(_user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
+    people = db.scalars(select(Person).where(Person.avatar_url.is_not(None), Person.avatar_url != "")).all()
+    report = []
+    for person in people:
+        ok, detail = avatar_status(person.avatar_url or "")
+        report.append({
+            "id": person.id,
+            "slug": person.slug,
+            "name": person.name,
+            "avatar_url": person.avatar_url or "",
+            "ok": ok,
+            "detail": detail,
+        })
+    return report
+
+
+@app.post("/api/admin/people/avatars/cleanup")
+def cleanup_avatars(_user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    """Очищает ссылки на аватарки, которые больше не отдают картинку."""
+    people = db.scalars(select(Person).where(Person.avatar_url.is_not(None), Person.avatar_url != "")).all()
+    cleared = []
+    for person in people:
+        ok, _ = avatar_status(person.avatar_url or "")
+        if not ok:
+            person.avatar_url = None
+            cleared.append(person.slug)
+    db.commit()
+    return {"checked": len(people), "cleared": len(cleared), "slugs": cleared}
+
+
+@app.post("/api/admin/people/{person_id}/merge", response_model=PersonOut)
+def merge_person(person_id: int, payload: PersonMergeIn, _user: User = Depends(current_user), db: Session = Depends(get_db)) -> Person:
+    """Переносит связи и заполненные поля на целевую запись, исходную удаляет."""
+    source = db.get(Person, person_id)
+    target = db.get(Person, payload.target_id)
+    if not source or not target:
+        raise HTTPException(status_code=404, detail="Person not found")
+    if source.id == target.id:
+        raise HTTPException(status_code=422, detail="Нельзя объединить запись с самой собой")
+    for link in db.scalars(select(ConflictPerson).where(ConflictPerson.person_id == source.id)).all():
+        twin = db.scalar(select(ConflictPerson).where(
+            ConflictPerson.conflict_id == link.conflict_id,
+            ConflictPerson.person_id == target.id,
+            ConflictPerson.relation == link.relation,
+        ))
+        if twin:
+            # Обе записи участвуют в одном материале с одной ролью: сливаем события.
+            twin.event_ids = sorted({*(twin.event_ids or []), *(link.event_ids or [])})
+            twin.role = twin.role or link.role
+            db.delete(link)
+        else:
+            link.person_id = target.id
+    target.avatar_url = target.avatar_url or source.avatar_url
+    target.bio = target.bio or source.bio
+    target.links = {key: value for key, value in {**(source.links or {}), **(target.links or {})}.items() if value}
+    db.delete(source)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Не удалось объединить записи")
+    db.refresh(target)
+    return target
 
 
 @app.patch("/api/admin/people/{person_id}", response_model=PersonOut)
@@ -617,10 +734,11 @@ async def upload_image(
         raise HTTPException(status_code=422, detail="Invalid image")
     source.thumbnail((2400, 2400))
     filename = f"{uuid4().hex}.webp"
-    destination = Path(settings.upload_dir) / filename
+    language = current_site_lang.get()
+    destination = Path(settings.upload_dir) / language / filename
     source.save(destination, "WEBP", quality=86, method=6)
     return UploadOut(
-        url=f"{settings.public_upload_url.rstrip('/')}/{filename}",
+        url=f"{settings.site_base_url.rstrip('/')}{'/en' if language == 'en' else ''}/uploads/{filename}",
         width=source.width,
         height=source.height,
         content_type="image/webp",

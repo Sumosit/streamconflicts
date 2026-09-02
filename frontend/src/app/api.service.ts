@@ -62,6 +62,7 @@ export interface ChangeDto { id: number; description: string; created_at: string
 
 export interface AnalyticsSummaryDto {
   days: number;
+  site_lang: 'ru'|'en'|'all';
   totals: { views:number; visitors:number; unique_ips:number; raw_views:number };
   all_time: { visitors:number; returning_visitors:number; since:string|null };
   audience: { new_visitors:number; returning_visitors:number; returning_rate:number; avg_days:number };
@@ -112,6 +113,7 @@ export interface SubmissionDto {
 }
 
 export interface ConflictsPage { items: ConflictDto[]; total: number }
+export interface AvatarCheckDto { id:number; slug:string; name:string; avatar_url:string; ok:boolean; detail:string }
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -144,8 +146,8 @@ export class ApiService {
     return this.http.post<void>(`${SITE.apiBase}/api/analytics/visit`, payload);
   }
 
-  analytics(days = 30): Observable<AnalyticsSummaryDto> {
-    return this.http.get<AnalyticsSummaryDto>(`${SITE.apiBase}/api/admin/analytics`, { params: { days } });
+  analytics(days = 30, siteLang: 'ru'|'en'|'all' = 'all'): Observable<AnalyticsSummaryDto> {
+    return this.http.get<AnalyticsSummaryDto>(`${SITE.apiBase}/api/admin/analytics`, { params: { days, site_lang: siteLang } });
   }
 
   login(email: string, password: string): Observable<{ access_token: string }> {
@@ -181,6 +183,19 @@ export class ApiService {
 
   updatePerson(id: number, payload: unknown): Observable<PersonDto> {
     return this.http.patch<PersonDto>(`${SITE.apiBase}/api/admin/people/${id}`, payload);
+  }
+
+  /** Переносит связи и поля на целевую запись, исходную удаляет. */
+  mergePerson(personId: number, targetId: number): Observable<PersonDto> {
+    return this.http.post<PersonDto>(`${SITE.apiBase}/api/admin/people/${personId}/merge`, { target_id: targetId });
+  }
+
+  checkAvatars(): Observable<AvatarCheckDto[]> {
+    return this.http.get<AvatarCheckDto[]>(`${SITE.apiBase}/api/admin/people/avatars`);
+  }
+
+  cleanupAvatars(): Observable<{ checked: number; cleared: number; slugs: string[] }> {
+    return this.http.post<{ checked: number; cleared: number; slugs: string[] }>(`${SITE.apiBase}/api/admin/people/avatars/cleanup`, {});
   }
 
   uploadImage(file: File): Observable<{ url: string }> {

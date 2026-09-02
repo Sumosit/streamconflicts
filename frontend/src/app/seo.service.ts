@@ -23,7 +23,9 @@ export class SeoService {
   private readonly base = `${SITE.baseUrl}${SITE.path}`;
 
   set(data: SeoData): void {
-    const url = `${this.base}${data.path === '/' ? '' : data.path}`;
+    // Корень сайта каноникализируем со слешем: без него адрес расходится с sitemap
+    // и с редиректом /en -> /en/, из-за чего Google метит страницы как дубли.
+    const url = data.path === '/' ? `${this.base}/` : `${this.base}${data.path}`;
     this.document.documentElement.lang = SITE.lang;
     this.title.setTitle(data.title);
     this.meta.updateTag({ name: 'description', content: data.description });
@@ -65,7 +67,7 @@ export class SeoService {
           '@type': 'ListItem',
           position: index + 1,
           name: crumb.name,
-          item: `${this.base}${crumb.path === '/' ? '' : crumb.path}`,
+          item: crumb.path === '/' ? `${this.base}/` : `${this.base}${crumb.path}`,
         })),
       });
     }

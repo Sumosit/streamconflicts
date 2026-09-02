@@ -1,179 +1,132 @@
-# Развертывание StreamConflicts на Ubuntu
+# Развёртывание StreamConflicts
 
-Все команды в этом документе выполняются по очереди. Проект размещается в `/root/streamconflicts`. Конфигурация проекта находится в его корне, системный Nginx только подключает подготовленный файл.
+Актуальная production-архитектура использует одну SQLite базу и один API для RU
+и EN. Фактическое состояние действующего сервера записано в `PROJECT_STATE.md`.
 
-## 1. DNS
+## Каталоги на сервере
 
-Создать A-записи, указывающие на публичный IPv4 сервера:
+Проект расположен в `/root/streamconflicts`.
 
-| Имя | Значение |
-|---|---|
-| `@` | IP сервера |
-| `www` | IP сервера |
-| `dev` | IP сервера |
-
-Проверка после обновления DNS:
-
-```bash
-getent hosts streamconflicts.com
-getent hosts dev.streamconflicts.com
+```text
+/root/streamconflicts
+├── backend
+├── frontend
+│   ├── deploy
+│   └── deploy-en
+├── nginx
+├── server-data
+│   ├── dev
+│   └── unified
+│       ├── data
+│       └── uploads
+└── backups
 ```
 
-## 2. Подготовка Ubuntu
-
-Нужны Docker Engine с Compose plugin, Nginx и Certbot. После установки проверить:
-
-```bash
-docker --version
-docker compose version
-nginx -v
-certbot --version
-```
-
-Открыть только SSH, HTTP и HTTPS:
-
-```bash
-sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
-sudo ufw enable
-sudo ufw status
-```
-
-## 3. Сборка фронтенда на Windows
-
-В PowerShell:
+## Сборка фронтенда на Windows
 
 ```powershell
 cd D:\Active\twitch_conflicts\frontend
 npm.cmd run build:all
 ```
 
-Команда собирает обе языковые версии: русскую в `frontend/deploy` и английскую
-в `frontend/deploy-en` (base href `/en/`, отдельный API-префикс `/en/api`).
-Отдельно: `npm.cmd run build:ru` и `npm.cmd run build:en`.
+Результаты:
 
-Готовый сайт находится в `frontend/deploy/browser`. На сервер исходники Angular и `node_modules` не переносятся.
-
-## 4. Перенос через WinSCP
-
-Создать `/root/streamconflicts` и загрузить в него:
-
-- `backend` целиком;
-- `nginx` целиком;
-- `docker-compose.yml`, `.env.dev.example`, `.env.prod.example`, `.env.en.example`, `.gitignore` и `DEPLOY.md`;
-- в `frontend` только `deploy` и `deploy-en` (образ фронтенда не собирается, сборка монтируется в контейнер).
-
-Проверить структуру:
-
-```bash
-cd /root/streamconflicts
-ls -la
-docker compose config
+```text
+frontend/deploy
+frontend/deploy-en
 ```
 
-Последнюю команду запускать после создания `.env.dev` и `.env.prod` на следующем шаге.
+На сервер загружаются обе готовые сборки. `node_modules` не загружается.
 
-## 5. Секреты и каталоги данных
+## Production environment
 
-```bash
-cd /root/streamconflicts
-cp .env.dev.example .env.dev
-cp .env.prod.example .env.prod
-openssl rand -hex 32
-openssl rand -hex 32
-nano .env.dev
-nano .env.prod
-mkdir -p server-data/{dev,prod}/{data,uploads}
-chmod 600 .env.dev .env.prod
+Используется только `.env.prod`. Он содержит общий аккаунт администратора и
+секрет единственного production API.
+
+Ключевые параметры:
+
+```text
+DATABASE_URL=sqlite:////data/streamconflicts.sqlite3
+UPLOAD_DIR=/uploads
+SITE_LANG=ru
+SITE_BASE_URL=https://streamconflicts.com
+SITE_PATH_PREFIX=
+ALT_SITE_PATH_PREFIX=en
 ```
 
-Вставить разные результаты `openssl` в `JWT_SECRET`. Также установить разные длинные пароли `BOOTSTRAP_ADMIN_PASSWORD`.
+`.env.en` и отдельный EN API больше не используются.
 
-Не копировать базу dev в prod. Каталоги разделены физически:
-
-- `server-data/dev/data` и `server-data/dev/uploads`
-- `server-data/prod/data` и `server-data/prod/uploads`
-
-## 6. Сборка и запуск контейнеров
+## Подготовка каталогов
 
 ```bash
 cd /root/streamconflicts
-docker compose config
-docker compose build
-docker compose up -d
+mkdir -p server-data/unified/data
+mkdir -p server-data/unified/uploads/ru
+mkdir -p server-data/unified/uploads/en
+mkdir -p backups
+chown -R 100:101 server-data/unified
+chmod 600 .env.prod
+```
+
+## Запуск
+
+```bash
+cd /root/streamconflicts
+docker compose config --quiet
+docker compose build api-prod
+docker compose up -d api-prod frontend-prod frontend-en
 docker compose ps
 ```
 
-Проверить сервисы напрямую на сервере:
+Проверка API напрямую:
 
 ```bash
-curl http://127.0.0.1:8001/api/health
 curl http://127.0.0.1:8002/api/health
-curl -I http://127.0.0.1:8081
-curl -I http://127.0.0.1:8082
+curl -H 'X-Site-Lang: en' http://127.0.0.1:8002/api/health
 ```
 
-SQLite и каталоги изображений создаются только на сервере при запуске API.
-
-## 7. Подключение Nginx
+## Nginx
 
 ```bash
 cp /root/streamconflicts/nginx/streamconflicts.conf /etc/nginx/sites-available/streamconflicts.conf
-sudo ln -s /etc/nginx/sites-available/streamconflicts.conf /etc/nginx/sites-enabled/streamconflicts.conf
-sudo nginx -t
-sudo systemctl reload nginx
+nginx -t
+systemctl reload nginx
 ```
 
-Если стандартный сайт Nginx мешает:
+Nginx направляет `/api` и `/en/api` в один API на порту 8002 и добавляет
+соответствующий `X-Site-Lang`.
+
+## Полная публичная проверка
 
 ```bash
-sudo unlink /etc/nginx/sites-enabled/default
-sudo nginx -t
-sudo systemctl reload nginx
+curl https://streamconflicts.com/api/health
+curl https://streamconflicts.com/en/api/health
+curl -s https://streamconflicts.com/api/conflicts | python3 -c "import json,sys; print(len(json.load(sys.stdin)))"
+curl -s https://streamconflicts.com/en/api/conflicts | python3 -c "import json,sys; print(len(json.load(sys.stdin)))"
+curl -s -o /dev/null -w 'RU sitemap: %{http_code}\n' https://streamconflicts.com/sitemap.xml
+curl -s -o /dev/null -w 'EN sitemap: %{http_code}\n' https://streamconflicts.com/en/sitemap.xml
+curl -s -o /dev/null -w 'RU RSS: %{http_code}\n' https://streamconflicts.com/rss.xml
+curl -s -o /dev/null -w 'EN RSS: %{http_code}\n' https://streamconflicts.com/en/rss.xml
 ```
 
-Проверка по HTTP:
-
-```bash
-curl -I http://streamconflicts.com
-curl http://streamconflicts.com/api/health
-curl -I http://dev.streamconflicts.com
-curl http://dev.streamconflicts.com/api/health
-```
-
-## 8. HTTPS
-
-DNS уже должен указывать на сервер, а порт 80 должен быть доступен извне:
-
-```bash
-sudo certbot --nginx -d streamconflicts.com -d www.streamconflicts.com
-sudo certbot --nginx -d dev.streamconflicts.com
-sudo certbot renew --dry-run
-```
-
-После этого проверить обе среды в браузере.
-
-## 9. Последующие обновления
-
-Загрузить свежий архив, распаковать поверх исходного кода и выполнить:
+## Резервная копия
 
 ```bash
 cd /root/streamconflicts
-docker compose build
-docker compose up -d
-docker compose ps
+docker compose exec api-prod python -c "import sqlite3; s=sqlite3.connect('/data/streamconflicts.sqlite3'); d=sqlite3.connect('/data/backup.sqlite3'); s.backup(d); d.close(); s.close(); print('backup ok')"
+cp server-data/unified/data/backup.sqlite3 backups/streamconflicts.sqlite3
+tar -czf backups/unified-uploads.tar.gz server-data/unified/uploads
 ```
 
-Миграции Alembic запускаются API-контейнерами автоматически. `server-data` при обновлении не удаляется.
+SQLite копируется только через backup API. Резервные копии нужно переносить за
+пределы сервера.
 
-## 10. Резервная копия prod
+## Миграции
+
+Миграции запускаются entrypoint API автоматически.
 
 ```bash
-cd /root/streamconflicts
-mkdir -p backups
-docker compose exec api-prod python -c "import sqlite3; s=sqlite3.connect('/data/streamconflicts.sqlite3'); d=sqlite3.connect('/data/backup.sqlite3'); s.backup(d); d.close(); s.close()"
-cp server-data/prod/data/backup.sqlite3 backups/
-tar -czf backups/prod-uploads.tar.gz server-data/prod/uploads
+docker compose exec api-prod alembic current
 ```
 
-Копии необходимо регулярно переносить на другой сервер или в объектное хранилище.
+Актуальная версия перед началом истории: `0013_analytics_language`.

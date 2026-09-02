@@ -1,40 +1,51 @@
 # StreamArchive backend
 
-FastAPI API for the editor and public site. Runtime databases and uploaded images exist only on the Ubuntu server.
+FastAPI API обслуживает русскую и английскую версии сайта из одной базы.
 
-## Environments on one server
+## Среды
 
-| Environment | API port | SQLite | Uploads |
+| Среда | API | SQLite | Изображения |
 |---|---:|---|---|
-| dev | `127.0.0.1:8001` | `server-data/dev/data/streamconflicts-dev.sqlite3` | `server-data/dev/uploads/` |
-| prod | `127.0.0.1:8002` | `server-data/prod/data/streamconflicts.sqlite3` | `server-data/prod/uploads/` |
+| dev | `127.0.0.1:8001` | `server-data/dev/data/streamconflicts-dev.sqlite3` | `server-data/dev/uploads` |
+| prod RU и EN | `127.0.0.1:8002` | `server-data/unified/data/streamconflicts.sqlite3` | `server-data/unified/uploads` |
 
-The directories and secrets are not committed to Git.
+Production API один. Nginx передаёт `X-Site-Lang: ru` для `/api` и
+`X-Site-Lang: en` для `/en/api`.
 
-The complete Compose, environment examples, Nginx configuration and deployment instructions are stored in the project root at `/root/streamconflicts`. Follow `DEPLOY.md` from the root instead of running the backend separately.
+## Основные маршруты
 
-## Endpoints
+- `POST /api/auth/token`: вход в редактор.
+- `GET /api/conflicts`: опубликованные материалы текущего языка.
+- `GET /api/conflicts/{slug}`: материал текущего языка.
+- `GET /api/admin/conflicts`: материалы редактора текущего языка.
+- `POST /api/admin/conflicts`: создание материала.
+- `PATCH /api/admin/conflicts/{id}`: изменение материала.
+- `POST /api/admin/uploads/images`: загрузка изображения.
+- `POST /api/analytics/visit`: запись посещения текущего языка.
+- `GET /api/admin/analytics?days=30&site_lang=ru`: RU-аналитика.
+- `GET /api/admin/analytics?days=30&site_lang=en`: EN-аналитика.
+- `GET /api/admin/analytics?days=30&site_lang=all`: общая аналитика.
+- `GET /docs`: OpenAPI.
 
-- `POST /api/auth/token` - editor login.
-- `GET /api/conflicts` - published archive.
-- `GET /api/conflicts/{slug}` - published material.
-- `GET /api/admin/conflicts` - all editor materials.
-- `POST /api/admin/conflicts` - create material.
-- `PATCH /api/admin/conflicts/{id}` - edit and add change log entry.
-- `DELETE /api/admin/conflicts/{id}` - archive material.
-- `POST /api/admin/people` - create person.
-- `POST /api/admin/uploads/images` - validate and store an image as WebP.
-- `POST /api/conflicts/{slug}/corrections` - public correction request.
-- `GET /api/admin/corrections` - correction request queue.
-- `PATCH /api/admin/corrections/{id}` - accept or reject a correction request.
-- `GET /docs` - interactive OpenAPI documentation.
+## Миграции и служебные скрипты
 
-## Backups
+Актуальная миграция: `0013_analytics_language`.
 
-Back up the database through the SQLite backup command, not by copying a live WAL database file:
-
-```bash
-docker compose exec api-prod python -c "import sqlite3; s=sqlite3.connect('/data/streamconflicts.sqlite3'); d=sqlite3.connect('/data/backup.sqlite3'); s.backup(d); d.close(); s.close()"
+```text
+scripts/merge_databases.py
+scripts/verify_merged_database.py
+scripts/repair_analytics_languages.py
 ```
 
-Copy `backup.sqlite3` and the prod uploads directory to storage outside this server.
+Назначение и фактическое состояние production описаны в `PROJECT_STATE.md`.
+
+## Резервная копия
+
+Копировать работающий SQLite-файл напрямую нельзя. Используется SQLite backup API:
+
+```bash
+docker compose exec api-prod python -c "import sqlite3; s=sqlite3.connect('/data/streamconflicts.sqlite3'); d=sqlite3.connect('/data/backup.sqlite3'); s.backup(d); d.close(); s.close(); print('backup ok')"
+```
+
+После этого `server-data/unified/data/backup.sqlite3` и каталог uploads нужно
+скопировать за пределы рабочего каталога сервера.

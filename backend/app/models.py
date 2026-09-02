@@ -29,8 +29,10 @@ class User(Base):
 
 class Conflict(Base):
     __tablename__ = "conflicts"
+    __table_args__ = (UniqueConstraint("site_lang", "slug"),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    slug: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    site_lang: Mapped[str] = mapped_column(String(2), default="ru", index=True)
+    slug: Mapped[str] = mapped_column(String(180), index=True)
     title: Mapped[str] = mapped_column(String(300))
     summary: Mapped[str] = mapped_column(Text)
     cover_image_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
@@ -86,8 +88,10 @@ class Source(Base):
 
 class Person(Base):
     __tablename__ = "people"
+    __table_args__ = (UniqueConstraint("site_lang", "slug"),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    slug: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    site_lang: Mapped[str] = mapped_column(String(2), default="ru", index=True)
+    slug: Mapped[str] = mapped_column(String(180), index=True)
     name: Mapped[str] = mapped_column(String(180), index=True)
     initials: Mapped[str] = mapped_column(String(8))
     avatar_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
@@ -124,6 +128,7 @@ class ChangeLog(Base):
 class CorrectionRequest(Base):
     __tablename__ = "correction_requests"
     id: Mapped[int] = mapped_column(primary_key=True)
+    site_lang: Mapped[str] = mapped_column(String(2), default="ru", index=True)
     conflict_id: Mapped[int | None] = mapped_column(ForeignKey("conflicts.id", ondelete="SET NULL"), nullable=True)
     statement: Mapped[str] = mapped_column(Text)
     source_url: Mapped[str] = mapped_column(String(2000))
@@ -135,6 +140,7 @@ class CorrectionRequest(Base):
 class MaterialSubmission(Base):
     __tablename__ = "material_submissions"
     id: Mapped[int] = mapped_column(primary_key=True)
+    site_lang: Mapped[str] = mapped_column(String(2), default="ru", index=True)
     source_url: Mapped[str] = mapped_column(String(2000))
     description: Mapped[str] = mapped_column(Text)
     contact: Mapped[str | None] = mapped_column(String(300), nullable=True)
@@ -144,8 +150,10 @@ class MaterialSubmission(Base):
 
 class SitePage(Base):
     __tablename__ = "site_pages"
+    __table_args__ = (UniqueConstraint("site_lang", "slug"),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    slug: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    site_lang: Mapped[str] = mapped_column(String(2), default="ru", index=True)
+    slug: Mapped[str] = mapped_column(String(100), index=True)
     title: Mapped[str] = mapped_column(String(300))
     lead: Mapped[str] = mapped_column(Text)
     sections: Mapped[list] = mapped_column(JSON, default=list)
@@ -160,7 +168,8 @@ class AnalyticsVisitor(Base):
     «новый или вернувшийся» посчитать нельзя."""
 
     __tablename__ = "analytics_visitors"
-    visitor_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    visitor_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    site_lang: Mapped[str] = mapped_column(String(2), default="ru", index=True)
     first_seen: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
     last_seen: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
     # Число разных дней с визитами и суммарное число записанных просмотров.
@@ -171,7 +180,8 @@ class AnalyticsVisitor(Base):
 class AnalyticsVisit(Base):
     __tablename__ = "analytics_visits"
     id: Mapped[int] = mapped_column(primary_key=True)
-    visitor_id: Mapped[str] = mapped_column(String(64), index=True)
+    site_lang: Mapped[str] = mapped_column(String(2), default="ru", index=True)
+    visitor_id: Mapped[str] = mapped_column(String(80), index=True)
     ip_address: Mapped[str] = mapped_column(String(64), index=True)
     path: Mapped[str] = mapped_column(String(500), index=True)
     referrer: Mapped[str | None] = mapped_column(String(2000), nullable=True)

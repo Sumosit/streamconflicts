@@ -1,62 +1,50 @@
-# TwitchConflicts
+# StreamArchive frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.32.
+Angular 20 SSR-приложение собирается в двух языковых вариантах из одного исходного
+кода.
 
-## Development server
+## Сборка
 
-To start a local development server, run:
-
-```bash
-ng serve
+```powershell
+cd D:\Active\twitch_conflicts\frontend
+npm.cmd run build:all
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Результат:
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
+```text
+deploy      RU, base href /
+deploy-en   EN, base href /en/
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Отдельные команды:
 
-```bash
-ng generate --help
+```powershell
+npm.cmd run build:ru
+npm.cmd run build:en
 ```
 
-## Building
+Обе production-сборки проверены 2 сентября 2026 года.
 
-To build the project run:
+## API
 
-```bash
-ng build
+RU-сборка обращается к `/api`. EN-сборка обращается к `/en/api`. Оба адреса
+ведут в один backend, язык добавляет Nginx.
+
+## Аналитика редактора
+
+На `/editor/analytics` и `/en/editor/analytics` доступен один отчёт с режимами:
+
+```text
+RU | EN | Общая
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Frontend передаёт параметр `site_lang` в административный API.
 
-## Running unit tests
+## Локальная разработка
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
+```powershell
+npm.cmd start
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
-## Local development
-
-`npm start` runs Angular on `http://localhost:4200` and proxies `/api` and `/uploads` to `https://dev.streamconflicts.com`. Local development therefore uses only the server dev database and never touches prod.
+Dev server работает на `http://localhost:4200` и использует `proxy.conf.json`.

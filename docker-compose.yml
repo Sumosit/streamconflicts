@@ -66,23 +66,6 @@ services:
     ports:
       - "127.0.0.1:8083:4000"
 
-  api-en:
-    build:
-      context: ./backend
-    restart: unless-stopped
-    env_file: .env.en
-    ports:
-      - "127.0.0.1:8003:8000"
-    volumes:
-      - ./server-data/en/data:/data
-      - ./server-data/en/uploads:/uploads
-    mem_limit: 256m
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
   api-prod:
     build:
       context: ./backend
@@ -91,8 +74,8 @@ services:
     ports:
       - "127.0.0.1:8002:8000"
     volumes:
-      - ./server-data/prod/data:/data
-      - ./server-data/prod/uploads:/uploads
+      - ./server-data/unified/data:/data
+      - ./server-data/unified/uploads:/uploads
     mem_limit: 256m
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
