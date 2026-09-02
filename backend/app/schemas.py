@@ -55,10 +55,14 @@ class PersonIn(BaseModel):
     links: dict[str, str] = Field(default_factory=dict)
     profile_status: str = Field(default="active", pattern=r"^(active|hidden)$")
     entity_type: str = Field(default="streamer", pattern=r"^(streamer|media|organization|other)$")
+    # Общий ключ RU- и EN-карточки одного человека: справочник языковой,
+    # а история — нет, и связывать события надо с обеими.
+    canonical_key: str | None = Field(default=None, max_length=180, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 class PersonOut(PersonIn):
     id: int
+    site_lang: str = "ru"
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -71,10 +75,26 @@ class PersonUpdate(BaseModel):
     links: dict[str, str] | None = None
     profile_status: str | None = Field(default=None, pattern=r"^(active|hidden)$")
     entity_type: str | None = Field(default=None, pattern=r"^(streamer|media|organization|other)$")
+    canonical_key: str | None = Field(default=None, max_length=180)
 
 
 class PersonMergeIn(BaseModel):
     target_id: int
+
+
+class PersonTwinCandidate(BaseModel):
+    """Пара карточек одного человека в разных языках справочника."""
+
+    reason: str
+    suggested_key: str
+    people: list[PersonOut]
+
+
+class PersonLinkIn(BaseModel):
+    person_ids: list[int] = Field(min_length=1)
+    # null снимает связь: ошибочно связанные карточки надо уметь развязать,
+    # а PATCH людей игнорирует null (exclude_none).
+    canonical_key: str | None = Field(default=None, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=180)
 
 
 class AvatarCheckOut(BaseModel):

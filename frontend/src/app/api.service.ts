@@ -36,7 +36,12 @@ export interface PersonDto {
   links?: Record<string, string>;
   profile_status?: string;
   entity_type?: 'streamer' | 'media' | 'organization' | 'other';
+  site_lang?: string;
+  /** Общий ключ RU- и EN-карточки одного человека. */
+  canonical_key?: string | null;
 }
+
+export interface PersonTwinDto { reason: string; suggested_key: string; people: PersonDto[] }
 
 export interface SitePageDto {
   id: number;
@@ -255,6 +260,22 @@ export class ApiService {
 
   people(): Observable<PersonDto[]> {
     return this.http.get<PersonDto[]>(`${SITE.apiBase}/api/admin/people`);
+  }
+
+  /** Поиск по справочнику; all=true обходит языковой фильтр — история общая. */
+  searchPeople(query = '', all = false): Observable<PersonDto[]> {
+    let params = new HttpParams();
+    if (query.trim()) params = params.set('q', query.trim());
+    if (all) params = params.set('all_languages', true);
+    return this.http.get<PersonDto[]>(`${SITE.apiBase}/api/admin/people/search`, { params });
+  }
+
+  personTwins(): Observable<PersonTwinDto[]> {
+    return this.http.get<PersonTwinDto[]>(`${SITE.apiBase}/api/admin/people/twins`);
+  }
+
+  linkPeople(personIds: number[], canonicalKey: string | null): Observable<PersonDto[]> {
+    return this.http.post<PersonDto[]>(`${SITE.apiBase}/api/admin/people/link`, { person_ids: personIds, canonical_key: canonicalKey });
   }
 
   createPerson(payload: unknown): Observable<PersonDto> {

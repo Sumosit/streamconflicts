@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import get_settings
 from app.database import SessionLocal, current_site_lang, get_db
-from app.models import AnalyticsVisit, AnalyticsVisitor, ChangeLog, Conflict, ConflictPerson, CorrectionRequest, HistoryEvent, HistoryStatus, MaterialSubmission, Person, SitePage, Source, TimelineEvent, User
+from app.models import AnalyticsVisit, AnalyticsVisitor, ChangeLog, Conflict, ConflictPerson, CorrectionRequest, HistoryEvent, HistoryEventPerson, HistoryStatus, MaterialSubmission, Person, SitePage, Source, TimelineEvent, User
 from app.schemas import (
     ConflictCreate,
     ConflictListOut,
@@ -34,8 +34,10 @@ from app.schemas import (
     CorrectionUpdate,
     AvatarCheckOut,
     PersonIn,
+    PersonLinkIn,
     PersonMergeIn,
     PersonOut,
+    PersonTwinCandidate,
     PersonUpdate,
     Token,
     UploadOut,
@@ -525,6 +527,94 @@ def delete_conflict(conflict_id: int, _user: User = Depends(current_user), db: S
     db.commit()
 
 
+def all_language_people(db: Session):
+    """Справочник целиком, поверх языкового фильтра из database.py."""
+    return db.scalars(
+        select(Person).execution_options(include_all_languages=True).order_by(Person.name)
+    ).all()
+
+
+def profile_handles(person: Person) -> set[str]:
+    """Ники из ссылок на профили: совпадение по ним надёжнее совпадения по имени."""
+    handles = set()
+    for value in (person.links or {}).values():
+        if not value:
+            continue
+        tail = value.rstrip("/").rsplit("/", 1)[-1].lower().lstrip("@")
+        if tail and "." not in tail:
+            handles.add(tail)
+    return handles
+
+
+@app.get("/api/admin/people/search", response_model=list[PersonOut])
+def search_people(
+    q: str | None = None,
+    all_languages: bool = False,
+    _user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> list[Person]:
+    """Поиск по справочнику. История связывается с людьми обоих языков,
+    поэтому ей нужен режим, который обходит языковой фильтр."""
+    people = all_language_people(db) if all_languages else list(db.scalars(select(Person).order_by(Person.name)))
+    if q and q.strip():
+        needle = q.strip().lower()
+        people = [item for item in people if needle in item.name.lower() or needle in item.slug.lower()]
+    return people[:60]
+
+
+@app.get("/api/admin/people/twins", response_model=list[PersonTwinCandidate])
+def person_twins(_user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
+    """Кандидаты на связывание: RU- и EN-карточки одного человека.
+
+    Ищем только между языками — дубли внутри одного языка это другая задача,
+    их сливают, а не связывают ключом.
+    """
+    people = [item for item in all_language_people(db) if not item.canonical_key]
+    groups: dict[tuple[str, str], list[Person]] = {}
+    for person in people:
+        keys = {("slug", person.slug.lower()), ("name", person.name.strip().lower())}
+        keys.update(("handle", handle) for handle in profile_handles(person))
+        for key in keys:
+            groups.setdefault(key, []).append(person)
+
+    seen: set[tuple[int, ...]] = set()
+    candidates: list[dict] = []
+    labels = {"slug": "совпадает slug", "name": "совпадает имя", "handle": "совпадает ссылка на профиль"}
+    # Порядок разбора фиксируем: иначе одна и та же пара показывалась бы то
+    # по slug, то по ссылке — в зависимости от порядка обхода словаря.
+    priority = {"slug": 0, "handle": 1, "name": 2}
+    for (kind, value), members in sorted(groups.items(), key=lambda item: priority[item[0][0]]):
+        if len({item.site_lang for item in members}) < 2:
+            continue
+        identity = tuple(sorted(item.id for item in members))
+        if identity in seen:
+            continue
+        seen.add(identity)
+        # Ключ предлагаем от английской карточки: он латиницей и стабильнее.
+        english = next((item for item in members if item.site_lang == "en"), members[0])
+        candidates.append({
+            "reason": labels[kind],
+            "suggested_key": english.slug if kind != "handle" else value,
+            "people": sorted(members, key=lambda item: item.site_lang),
+        })
+    candidates.sort(key=lambda item: item["people"][0].name.lower())
+    return candidates
+
+
+@app.post("/api/admin/people/link", response_model=list[PersonOut])
+def link_people(payload: PersonLinkIn, _user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[Person]:
+    """Проставляет общий canonical_key выбранным карточкам."""
+    people = list(db.scalars(
+        select(Person).execution_options(include_all_languages=True).where(Person.id.in_(payload.person_ids))
+    ))
+    if len(people) != len(set(payload.person_ids)):
+        raise HTTPException(status_code=404, detail="Person not found")
+    for person in people:
+        person.canonical_key = payload.canonical_key
+    db.commit()
+    return people
+
+
 @app.post("/api/admin/people", response_model=PersonOut, status_code=201)
 def create_person(payload: PersonIn, _user: User = Depends(current_user), db: Session = Depends(get_db)) -> Person:
     person = Person(**payload.model_dump())
@@ -606,7 +696,22 @@ def merge_person(person_id: int, payload: PersonMergeIn, _user: User = Depends(c
             db.delete(link)
         else:
             link.person_id = target.id
+    # Связи истории переносим тем же порядком. Без этого исходную запись удалит
+    # каскад по history_event_people.person_id, и событие молча останется без
+    # участника — заметить это в редакторе конфликтов невозможно.
+    for history_link in db.scalars(select(HistoryEventPerson).where(HistoryEventPerson.person_id == source.id)).all():
+        twin = db.scalar(select(HistoryEventPerson).where(
+            HistoryEventPerson.event_id == history_link.event_id,
+            HistoryEventPerson.person_id == target.id,
+            HistoryEventPerson.relation == history_link.relation,
+        ))
+        if twin:
+            twin.role = twin.role or history_link.role
+            db.delete(history_link)
+        else:
+            history_link.person_id = target.id
     target.avatar_url = target.avatar_url or source.avatar_url
+    target.canonical_key = target.canonical_key or source.canonical_key
     target.bio = target.bio or source.bio
     target.links = {key: value for key, value in {**(source.links or {}), **(target.links or {})}.items() if value}
     db.delete(source)
@@ -624,7 +729,12 @@ def update_person(person_id: int, payload: PersonUpdate, _user: User = Depends(c
     person = db.get(Person, person_id)
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
-    for key, value in payload.model_dump(exclude_none=True).items():
+    data = payload.model_dump(exclude_none=True)
+    # Остальные поля очищаются через свои формы, а ключ связи снимается
+    # только здесь, поэтому null для него разбираем отдельно от exclude_none.
+    if "canonical_key" in payload.model_fields_set:
+        data["canonical_key"] = payload.canonical_key
+    for key, value in data.items():
         setattr(person, key, value)
     try:
         db.commit()

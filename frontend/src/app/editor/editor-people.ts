@@ -3,10 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { concat, defaultIfEmpty, toArray } from 'rxjs';
 
-type DuplicateGroup = { key: string; title: string; reason: string; people: PersonDto[] };
-import { ApiService, AvatarCheckDto, PersonDto } from '../api.service';
+import { UpperCasePipe } from '@angular/common';
 
-@Component({selector:'app-editor-people',imports:[RouterLink,FormsModule],template:`<main class="editor-shell"><header class="editor-header"><a routerLink="/editor"><b>← Материалы</b></a><nav><a class="button primary" routerLink="/editor/people/new">Добавить запись</a></nav></header><div class="section-head"><div><h1>Стримеры, медиа и организации</h1><p class="muted">Общий справочник участников и авторов комментариев.</p></div><span>{{items().length}}</span></div><section class="panel"><span class="muted">ВЫГРУЗКА В JSON</span><h2>Экспорт справочника</h2><p class="muted">Диапазон по id включительно. Оставьте поля пустыми, чтобы выгрузить всех.</p><div class="people-io-row"><label>ID от<input type="number" [(ngModel)]="fromId" placeholder="{{minId()}}"></label><label>ID до<input type="number" [(ngModel)]="toId" placeholder="{{maxId()}}"></label><button class="button primary" type="button" (click)="exportJson()" [disabled]="!items().length">Скачать JSON ({{selected().length}})</button><button class="button" type="button" (click)="copyJson()" [disabled]="!items().length">Скопировать</button></div>@if(exportNote()){<p class="muted">{{exportNote()}}</p>}</section><section class="panel"><span class="muted">ОБНОВЛЕНИЕ ИЗ JSON</span><h2>Импорт изменений</h2><p class="muted">Принимается массив записей или объект с полем people. Запись сопоставляется по id, при его отсутствии — по slug. Найденные записи обновляются, остальные создаются.</p><label>Выбрать JSON-файл<input type="file" accept="application/json,.json" (change)="readFile($any($event.target))"></label><br><label>JSON<textarea class="json-input" rows="16" [(ngModel)]="json" spellcheck="false" placeholder='[{"id":1,"slug":"example","name":"Example"}]'></textarea></label><div class="people-io-row"><button class="button primary" type="button" (click)="applyJson()" [disabled]="importing()">{{importing()?'Обновление...':'Обновить записи'}}</button></div>@if(error()){<p class="error">{{error()}}</p>}@if(importNote()){<p class="muted">{{importNote()}}</p>}</section><section class="panel"><span class="muted">ОБСЛУЖИВАНИЕ СПРАВОЧНИКА</span><h2>Дубли и аватарки</h2><p class="muted">Импорт создаёт новую запись, если slug не совпал с существующей. Здесь можно найти дубли и слить их, а также убрать ссылки на аватарки, которые перестали открываться.</p><div class="people-io-row"><button class="button primary" type="button" (click)="findDuplicates()">Найти дубли</button><button class="button" type="button" (click)="checkAvatars()" [disabled]="avatarsChecking()">{{avatarsChecking()?'Проверяю...':'Проверить аватарки'}}</button>@if(brokenAvatars().length){<button class="button danger" type="button" (click)="cleanupAvatars()" [disabled]="avatarsChecking()">Очистить битые ({{brokenAvatars().length}})</button>}</div>@if(maintenanceNote()){<p class="muted">{{maintenanceNote()}}</p>}@if(brokenAvatars().length){<div class="analytics-table">@for(row of brokenAvatars();track row.id){<div><span>{{row.name}} · {{row.slug}}</span><b>{{row.detail}}</b></div>}</div>}@for(group of duplicateGroups();track group.key){<article class="event-box"><div class="section-head"><h3>{{group.title}}</h3><span class="muted">{{group.reason}}</span></div><div class="analytics-table">@for(person of group.people;track person.id){<div class="dupe-row"><span>{{person.name}} · {{person.slug}} · упоминаний {{usage(person.id)}} · описание {{(person.bio||'').length}} симв</span><button class="button" type="button" (click)="mergeInto(group,person)" [disabled]="merging()">Оставить эту</button></div>}</div></article>}</section><section class="list">@for(item of items();track item.id){<article class="list-row person-list-row"><div class="person-list-main">@if(item.avatar_url){<img class="person-list-avatar" [src]="item.avatar_url" [alt]="item.name" loading="lazy">}@else{<span class="person-list-avatar person-list-placeholder">{{item.initials||item.name.slice(0,2)}}</span>}<div><span class="badge">#{{item.id}} · {{typeLabel(item.entity_type)}} · {{item.profile_status==='hidden'?'Скрыт':'Активен'}}</span><h3>{{item.name}}</h3><span class="muted">{{item.slug}}</span></div></div><a class="button" [routerLink]="['/editor/people',item.id]">Редактировать</a></article>}@empty{<div class="panel">Справочник пока пуст.</div>}</section></main>`,styleUrl:'./editor.scss'})
+type DuplicateGroup = { key: string; title: string; reason: string; people: PersonDto[] };
+import { ApiService, AvatarCheckDto, PersonDto, PersonTwinDto } from '../api.service';
+
+@Component({selector:'app-editor-people',imports:[RouterLink,FormsModule,UpperCasePipe],template:`<main class="editor-shell"><header class="editor-header"><a routerLink="/editor"><b>← Материалы</b></a><nav><a class="button primary" routerLink="/editor/people/new">Добавить запись</a></nav></header><div class="section-head"><div><h1>Стримеры, медиа и организации</h1><p class="muted">Общий справочник участников и авторов комментариев.</p></div><span>{{items().length}}</span></div><section class="panel"><span class="muted">ВЫГРУЗКА В JSON</span><h2>Экспорт справочника</h2><p class="muted">Диапазон по id включительно. Оставьте поля пустыми, чтобы выгрузить всех.</p><div class="people-io-row"><label>ID от<input type="number" [(ngModel)]="fromId" placeholder="{{minId()}}"></label><label>ID до<input type="number" [(ngModel)]="toId" placeholder="{{maxId()}}"></label><button class="button primary" type="button" (click)="exportJson()" [disabled]="!items().length">Скачать JSON ({{selected().length}})</button><button class="button" type="button" (click)="copyJson()" [disabled]="!items().length">Скопировать</button></div>@if(exportNote()){<p class="muted">{{exportNote()}}</p>}</section><section class="panel"><span class="muted">ОБНОВЛЕНИЕ ИЗ JSON</span><h2>Импорт изменений</h2><p class="muted">Принимается массив записей или объект с полем people. Запись сопоставляется по id, при его отсутствии — по slug. Найденные записи обновляются, остальные создаются.</p><label>Выбрать JSON-файл<input type="file" accept="application/json,.json" (change)="readFile($any($event.target))"></label><br><label>JSON<textarea class="json-input" rows="16" [(ngModel)]="json" spellcheck="false" placeholder='[{"id":1,"slug":"example","name":"Example"}]'></textarea></label><div class="people-io-row"><button class="button primary" type="button" (click)="applyJson()" [disabled]="importing()">{{importing()?'Обновление...':'Обновить записи'}}</button></div>@if(error()){<p class="error">{{error()}}</p>}@if(importNote()){<p class="muted">{{importNote()}}</p>}</section><section class="panel"><span class="muted">ОДИН ЧЕЛОВЕК В ДВУХ ЯЗЫКАХ</span><h2>Связывание карточек</h2><p class="muted">Справочник разделён по языкам, а история — общая для RU и EN. Общий ключ позволяет истории найти человека независимо от того, на каком языке заведена карточка. Это не слияние: обе записи остаются.</p><div class="people-io-row"><button class="button primary" type="button" (click)="findTwins()" [disabled]="linking()">Найти пары</button></div>@if(twinNote()){<p class="muted">{{twinNote()}}</p>}@for(pair of twins();track pair.suggested_key+pair.people[0].id){<article class="event-box"><div class="section-head"><h3>{{pair.people[0].name}}</h3><span class="muted">{{pair.reason}}</span></div><div class="analytics-table">@for(person of pair.people;track person.id){<div><span>{{person.site_lang|uppercase}} · {{person.name}} · {{person.slug}}</span><b>#{{person.id}}</b></div>}</div><div class="people-io-row"><label>Общий ключ<input type="text" [ngModel]="keyFor(pair)" (ngModelChange)="setKey(pair,$event)" placeholder="justin-kan"></label><button class="button primary" type="button" (click)="linkPair(pair)" [disabled]="linking()">Связать</button></div></article>}@if(linkedKeys().length){<p class="muted">Связано пар: {{linkedKeys().length}}</p>}</section><section class="panel"><span class="muted">ОБСЛУЖИВАНИЕ СПРАВОЧНИКА</span><h2>Дубли и аватарки</h2><p class="muted">Импорт создаёт новую запись, если slug не совпал с существующей. Здесь можно найти дубли и слить их, а также убрать ссылки на аватарки, которые перестали открываться.</p><div class="people-io-row"><button class="button primary" type="button" (click)="findDuplicates()">Найти дубли</button><button class="button" type="button" (click)="checkAvatars()" [disabled]="avatarsChecking()">{{avatarsChecking()?'Проверяю...':'Проверить аватарки'}}</button>@if(brokenAvatars().length){<button class="button danger" type="button" (click)="cleanupAvatars()" [disabled]="avatarsChecking()">Очистить битые ({{brokenAvatars().length}})</button>}</div>@if(maintenanceNote()){<p class="muted">{{maintenanceNote()}}</p>}@if(brokenAvatars().length){<div class="analytics-table">@for(row of brokenAvatars();track row.id){<div><span>{{row.name}} · {{row.slug}}</span><b>{{row.detail}}</b></div>}</div>}@for(group of duplicateGroups();track group.key){<article class="event-box"><div class="section-head"><h3>{{group.title}}</h3><span class="muted">{{group.reason}}</span></div><div class="analytics-table">@for(person of group.people;track person.id){<div class="dupe-row"><span>{{person.name}} · {{person.slug}} · упоминаний {{usage(person.id)}} · описание {{(person.bio||'').length}} симв</span><button class="button" type="button" (click)="mergeInto(group,person)" [disabled]="merging()">Оставить эту</button></div>}</div></article>}</section><section class="list">@for(item of items();track item.id){<article class="list-row person-list-row"><div class="person-list-main">@if(item.avatar_url){<img class="person-list-avatar" [src]="item.avatar_url" [alt]="item.name" loading="lazy">}@else{<span class="person-list-avatar person-list-placeholder">{{item.initials||item.name.slice(0,2)}}</span>}<div><span class="badge">#{{item.id}} · {{typeLabel(item.entity_type)}} · {{item.profile_status==='hidden'?'Скрыт':'Активен'}}</span><h3>{{item.name}}</h3><span class="muted">{{item.slug}}@if(item.canonical_key){ · ключ {{item.canonical_key}}}</span></div></div><a class="button" [routerLink]="['/editor/people',item.id]">Редактировать</a></article>}@empty{<div class="panel">Справочник пока пуст.</div>}</section></main>`,styleUrl:'./editor.scss'})
 export class EditorPeople{
  private api=inject(ApiService);
  protected items=signal<PersonDto[]>([]);
@@ -80,6 +82,49 @@ export class EditorPeople{
   });
  }
 
+ protected readonly twins=signal<PersonTwinDto[]>([]);
+ protected readonly twinNote=signal('');
+ protected readonly linking=signal(false);
+ protected readonly linkedKeys=signal<string[]>([]);
+ private readonly keyEdits=signal<Record<string,string>>({});
+
+ /** Ключ пары: предложенный сервером, пока редактор не поправил его руками. */
+ protected keyFor(pair:PersonTwinDto):string{
+  return this.keyEdits()[this.pairId(pair)]??pair.suggested_key;
+ }
+ protected setKey(pair:PersonTwinDto,value:string):void{
+  this.keyEdits.set({...this.keyEdits(),[this.pairId(pair)]:value});
+ }
+ private pairId(pair:PersonTwinDto):string{return pair.people.map(person=>person.id).join('-');}
+
+ protected findTwins():void{
+  this.twinNote.set('');
+  this.api.personTwins().subscribe({
+   next:rows=>{
+    this.twins.set(rows);
+    this.twinNote.set(rows.length
+     ?`Найдено пар: ${rows.length}. Совпадение имени не всегда означает одного человека — проверьте глазами.`
+     :'Несвязанных пар не найдено.');
+   },
+   error:()=>this.twinNote.set('Не удалось получить список пар'),
+  });
+ }
+
+ protected linkPair(pair:PersonTwinDto):void{
+  const key=this.keyFor(pair).trim();
+  if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(key)){this.twinNote.set('Ключ: латиница, цифры и дефис');return;}
+  this.linking.set(true);
+  this.api.linkPeople(pair.people.map(person=>person.id),key).subscribe({
+   next:()=>{
+    this.linking.set(false);
+    this.linkedKeys.set([...this.linkedKeys(),key]);
+    this.twins.set(this.twins().filter(item=>this.pairId(item)!==this.pairId(pair)));
+    this.load();
+   },
+   error:error=>{this.linking.set(false);this.twinNote.set(error.error?.detail||'Не удалось связать карточки');},
+  });
+ }
+
  protected checkAvatars():void{
   this.avatarsChecking.set(true);this.maintenanceNote.set('');
   this.api.checkAvatars().subscribe({
@@ -111,7 +156,7 @@ export class EditorPeople{
  protected minId(){const list=this.items();return list.length?list[0].id:0}
  protected maxId(){const list=this.items();return list.length?list[list.length-1].id:0}
  protected selected():PersonDto[]{const from=Number(this.fromId),to=Number(this.toId);return this.items().filter(p=>(!this.fromId||p.id>=from)&&(!this.toId||p.id<=to));}
- private exportText():string{return JSON.stringify(this.selected().map(p=>({id:p.id,slug:p.slug,name:p.name,initials:p.initials,avatar_url:p.avatar_url??null,bio:p.bio??null,links:p.links||{},profile_status:p.profile_status||'active',entity_type:p.entity_type||'streamer'})),null,2);}
+ private exportText():string{return JSON.stringify(this.selected().map(p=>({id:p.id,slug:p.slug,name:p.name,initials:p.initials,avatar_url:p.avatar_url??null,bio:p.bio??null,links:p.links||{},profile_status:p.profile_status||'active',entity_type:p.entity_type||'streamer',canonical_key:p.canonical_key??null})),null,2);}
  protected exportJson():void{const list=this.selected();if(!list.length){this.exportNote.set('В выбранном диапазоне нет записей');return;}const blob=new Blob([this.exportText()],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`people-${list[0].id}-${list[list.length-1].id}.json`;link.click();URL.revokeObjectURL(url);this.exportNote.set(`Выгружено записей: ${list.length}`);}
  protected copyJson():void{const list=this.selected();if(!list.length){this.exportNote.set('В выбранном диапазоне нет записей');return;}void navigator.clipboard.writeText(this.exportText()).then(()=>this.exportNote.set(`Скопировано записей: ${list.length}`),()=>this.exportNote.set('Не удалось скопировать в буфер обмена'));}
  protected readFile(input:HTMLInputElement):void{const file=input.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{this.json=String(reader.result||'');this.error.set('');this.importNote.set('');};reader.readAsText(file,'utf-8');}
@@ -146,6 +191,7 @@ export class EditorPeople{
   if(raw.links!==undefined)out.links=Object.fromEntries(Object.entries(raw.links||{}).map(([key,value])=>[key,this.clean(value)||'']));
   if(raw.profile_status!==undefined)out.profile_status=raw.profile_status==='hidden'?'hidden':'active';
   if(raw.entity_type!==undefined)out.entity_type=['streamer','media','organization','other'].includes(raw.entity_type)?raw.entity_type:'streamer';
+  if(raw.canonical_key!==undefined)out.canonical_key=this.clean(raw.canonical_key);
   return out;
  }
  private clean(raw:unknown):string|null{if(raw===null||raw===undefined)return null;const value=String(raw).trim();if(!value)return null;const markdown=value.match(/^\[[^\]]*\]\((https?:\/\/[^)]+)\)$/);return markdown?markdown[1]:value;}
