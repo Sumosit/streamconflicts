@@ -534,6 +534,18 @@ def all_language_people(db: Session):
     ).all()
 
 
+def get_person_any_language(db: Session, person_id: int) -> Person | None:
+    """Запись справочника независимо от языка сайта.
+
+    db.get и обычный select отфильтровала бы языковая политика из database.py,
+    из-за чего карточка другого языка отдавала бы 404 — а справочник в редакторе
+    показывает оба языка сразу.
+    """
+    return db.scalar(
+        select(Person).execution_options(include_all_languages=True).where(Person.id == person_id)
+    )
+
+
 def profile_handles(person: Person) -> set[str]:
     """Ники из ссылок на профили: совпадение по ним надёжнее совпадения по имени."""
     handles = set()
@@ -645,7 +657,7 @@ def avatar_status(url: str) -> tuple[bool, str]:
 
 @app.get("/api/admin/people/avatars", response_model=list[AvatarCheckOut])
 def check_avatars(_user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
-    people = db.scalars(select(Person).where(Person.avatar_url.is_not(None), Person.avatar_url != "")).all()
+    people = [item for item in all_language_people(db) if item.avatar_url]
     report = []
     for person in people:
         ok, detail = avatar_status(person.avatar_url or "")
@@ -663,7 +675,7 @@ def check_avatars(_user: User = Depends(current_user), db: Session = Depends(get
 @app.post("/api/admin/people/avatars/cleanup")
 def cleanup_avatars(_user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
     """Очищает ссылки на аватарки, которые больше не отдают картинку."""
-    people = db.scalars(select(Person).where(Person.avatar_url.is_not(None), Person.avatar_url != "")).all()
+    people = [item for item in all_language_people(db) if item.avatar_url]
     cleared = []
     for person in people:
         ok, _ = avatar_status(person.avatar_url or "")
@@ -677,12 +689,19 @@ def cleanup_avatars(_user: User = Depends(current_user), db: Session = Depends(g
 @app.post("/api/admin/people/{person_id}/merge", response_model=PersonOut)
 def merge_person(person_id: int, payload: PersonMergeIn, _user: User = Depends(current_user), db: Session = Depends(get_db)) -> Person:
     """Переносит связи и заполненные поля на целевую запись, исходную удаляет."""
-    source = db.get(Person, person_id)
-    target = db.get(Person, payload.target_id)
+    source = get_person_any_language(db, person_id)
+    target = get_person_any_language(db, payload.target_id)
     if not source or not target:
         raise HTTPException(status_code=404, detail="Person not found")
     if source.id == target.id:
         raise HTTPException(status_code=422, detail="Нельзя объединить запись с самой собой")
+    if source.site_lang != target.site_lang:
+        # Связи материалов уехали бы на чужой языковой сайт, а публичная
+        # страница человека там его не покажет — получились бы битые ссылки.
+        raise HTTPException(
+            status_code=422,
+            detail="Записи разных языков объединять нельзя. Свяжите их общим ключом в разделе «Один человек в двух языках».",
+        )
     for link in db.scalars(select(ConflictPerson).where(ConflictPerson.person_id == source.id)).all():
         twin = db.scalar(select(ConflictPerson).where(
             ConflictPerson.conflict_id == link.conflict_id,
@@ -726,7 +745,7 @@ def merge_person(person_id: int, payload: PersonMergeIn, _user: User = Depends(c
 
 @app.patch("/api/admin/people/{person_id}", response_model=PersonOut)
 def update_person(person_id: int, payload: PersonUpdate, _user: User = Depends(current_user), db: Session = Depends(get_db)) -> Person:
-    person = db.get(Person, person_id)
+    person = get_person_any_language(db, person_id)
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
     data = payload.model_dump(exclude_none=True)
