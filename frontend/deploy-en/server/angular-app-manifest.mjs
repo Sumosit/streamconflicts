@@ -15,21 +15,21 @@ export default {
   {
     "renderMode": 0,
     "preload": [
-      "chunk-7ROBR2JF.js"
+      "chunk-C5JDM2UL.js"
     ],
     "route": "/en/conflicts/*"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-WZON5ZUF.js"
+      "chunk-VG2MF5BS.js"
     ],
     "route": "/en/archive"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-YVA4SQWA.js",
+      "chunk-MMD63FUD.js",
       "chunk-3JLHITOT.js"
     ],
     "route": "/en/history"
@@ -37,7 +37,7 @@ export default {
   {
     "renderMode": 0,
     "preload": [
-      "chunk-ZOW5ISJN.js",
+      "chunk-UPKBKWYN.js",
       "chunk-3JLHITOT.js"
     ],
     "route": "/en/history/*"
@@ -45,161 +45,168 @@ export default {
   {
     "renderMode": 0,
     "preload": [
-      "chunk-EGIVKXUR.js"
+      "chunk-IOOPRH64.js"
     ],
     "route": "/en/people"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-4V3YQVVU.js"
+      "chunk-WAWVUZ2O.js"
     ],
     "route": "/en/people/*"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-MF4IMJDI.js"
+      "chunk-JTOXZ3LP.js"
     ],
     "route": "/en/about"
   },
   {
     "renderMode": 0,
     "preload": [
-      "chunk-MF4IMJDI.js"
+      "chunk-JTOXZ3LP.js"
     ],
     "route": "/en/rules"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-ASTPRLBU.js"
+      "chunk-74Z3LOZQ.js"
     ],
     "route": "/en/editor"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-KXE43ZMU.js"
+      "chunk-YMU3E5IV.js"
     ],
     "route": "/en/editor/login"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-WBLS6MRM.js"
+      "chunk-VRPETI7Y.js"
     ],
     "route": "/en/editor/import"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-AR24U4UO.js"
+      "chunk-IL4XGUE5.js"
     ],
     "route": "/en/editor/conflicts/new"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-AR24U4UO.js"
+      "chunk-IL4XGUE5.js"
     ],
     "route": "/en/editor/conflicts/*"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-7ROBR2JF.js"
+      "chunk-C5JDM2UL.js"
     ],
     "route": "/en/editor/conflicts/*/preview"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-5HTRMBVQ.js"
+      "chunk-FJMXGU2I.js"
     ],
     "route": "/en/editor/history"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-IEVAOP62.js"
+      "chunk-FP7U4QSE.js"
+    ],
+    "route": "/en/editor/history/categories"
+  },
+  {
+    "renderMode": 1,
+    "preload": [
+      "chunk-XJL4BQLP.js"
     ],
     "route": "/en/editor/history/research"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-MNONBYV6.js"
+      "chunk-XHZXHNVB.js"
     ],
     "route": "/en/editor/history/import"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-4SBLS5Y5.js"
+      "chunk-CWXXPCIY.js"
     ],
     "route": "/en/editor/history/new"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-4SBLS5Y5.js"
+      "chunk-CWXXPCIY.js"
     ],
     "route": "/en/editor/history/*"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-VRE3UDNF.js"
+      "chunk-5XYKN4BV.js"
     ],
     "route": "/en/editor/corrections"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-YGSFP656.js"
+      "chunk-ZZX5UMAB.js"
     ],
     "route": "/en/editor/submissions"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-PN33UYLI.js"
+      "chunk-HSL2D26Q.js"
     ],
     "route": "/en/editor/analytics"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-CB5MZP27.js"
+      "chunk-ZD4V6QEC.js"
     ],
     "route": "/en/editor/people"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-3HC3LVYV.js"
+      "chunk-EYYGSPI2.js"
     ],
     "route": "/en/editor/people/new"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-3HC3LVYV.js"
+      "chunk-EYYGSPI2.js"
     ],
     "route": "/en/editor/people/*"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-OAMUYHTG.js"
+      "chunk-ASCZF5XK.js"
     ],
     "route": "/en/editor/pages/about"
   },
   {
     "renderMode": 1,
     "preload": [
-      "chunk-OAMUYHTG.js"
+      "chunk-ASCZF5XK.js"
     ],
     "route": "/en/editor/pages/rules"
   },
@@ -213,8 +220,8 @@ export default {
 ],
   entryPointToBrowserMapping: undefined,
   assets: {
-    'index.csr.html': {size: 3434, hash: '2e3ac8f217bda1851a1d7de396d185496a7d7220d8294c631731e2702b870b26', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
-    'index.server.html': {size: 2522, hash: '92e4a72ab8e46c531487dae542a8c67a06ed48bf1c4a4890becce7d7e4b40406', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
+    'index.csr.html': {size: 3434, hash: 'c445dcdf837e32609289e852ba97cde62a6225437dddd412b7bb32000df7ec89', text: () => import('./assets-chunks/index_csr_html.mjs').then(m => m.default)},
+    'index.server.html': {size: 2522, hash: '1cf45f59317bdaff8d084489f2da1727d722434908190d1a59ab21a670b58011', text: () => import('./assets-chunks/index_server_html.mjs').then(m => m.default)},
     'styles-4R6JCEQJ.css': {size: 2628, hash: 'dO/l0fupjls', text: () => import('./assets-chunks/styles-4R6JCEQJ_css.mjs').then(m => m.default)}
   },
 };

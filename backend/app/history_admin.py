@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.database import get_db
 from app.models import (
     HistoryCategory,
+    HistoryCategoryTranslation,
     HistoryEvent,
     HistoryEventCategory,
     HistoryEventPerson,
@@ -34,6 +35,9 @@ from app.models import (
 )
 from app.schemas import (
     HistoryAdminDetailOut,
+    HistoryCategoryIn,
+    HistoryCategoryOrderIn,
+    HistoryCategoryUpdate,
     HistoryAdminListOut,
     HistoryAdminRowOut,
     HistoryCategoryAdminOut,
@@ -125,9 +129,7 @@ def get_event_or_404(db: Session, event_id: int) -> HistoryEvent:
 # --- Разделы -----------------------------------------------------------------
 
 
-@router.get("/categories", response_model=list[HistoryCategoryAdminOut])
-def admin_categories(_user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
-    """Плоский список с полным путём: в выпадающем списке карточки дерево неудобно."""
+def category_rows(db: Session) -> list[dict]:
     categories = db.scalars(
         select(HistoryCategory)
         .options(selectinload(HistoryCategory.translations))
@@ -135,16 +137,48 @@ def admin_categories(_user: User = Depends(current_user), db: Session = Depends(
     ).all()
     by_id = {item.id: item for item in categories}
 
+    events = dict(
+        db.execute(
+            select(HistoryEventCategory.category_id, func.count(HistoryEventCategory.event_id))
+            .group_by(HistoryEventCategory.category_id)
+        ).all()
+    )
+    children: dict[int, int] = {}
+    for category in categories:
+        if category.parent_id:
+            children[category.parent_id] = children.get(category.parent_id, 0) + 1
+
     def path_of(category: HistoryCategory) -> tuple[str, int]:
         parts = []
         node: HistoryCategory | None = category
-        while node is not None:
+        seen = set()
+        while node is not None and node.id not in seen:
+            seen.add(node.id)
             parts.append(category_title(node))
             node = by_id.get(node.parent_id) if node.parent_id else None
         return " / ".join(reversed(parts)), len(parts) - 1
 
-    rows = []
+    # Порядок обхода дерева, а не алфавит: список в редакторе должен читаться
+    # так же, как меню на сайте, иначе кнопки «Выше» и «Ниже» ничего не меняют.
+    children_of: dict[int | None, list[HistoryCategory]] = {}
     for category in categories:
+        children_of.setdefault(category.parent_id, []).append(category)
+    for group in children_of.values():
+        group.sort(key=lambda item: (item.sort_order, item.id))
+
+    ordered: list[HistoryCategory] = []
+
+    def walk(parent_id: int | None) -> None:
+        for category in children_of.get(parent_id, []):
+            ordered.append(category)
+            walk(category.id)
+
+    walk(None)
+    # Раздел с потерянным родителем иначе выпал бы из списка совсем.
+    ordered.extend(category for category in categories if category not in ordered)
+
+    rows = []
+    for category in ordered:
         path, depth = path_of(category)
         rows.append({
             "id": category.id,
@@ -154,9 +188,133 @@ def admin_categories(_user: User = Depends(current_user), db: Session = Depends(
             "path": path,
             "is_platform": category.is_platform,
             "depth": depth,
+            "sort_order": category.sort_order,
+            "is_published": category.is_published,
+            "titles": {item.language: item.title for item in category.translations},
+            "event_count": events.get(category.id, 0),
+            "child_count": children.get(category.id, 0),
         })
-    rows.sort(key=lambda item: item["path"])
     return rows
+
+
+@router.get("/categories", response_model=list[HistoryCategoryAdminOut])
+def admin_categories(_user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
+    """Плоский список с полным путём: в выпадающем списке карточки дерево неудобно."""
+    return category_rows(db)
+
+
+def apply_titles(db: Session, category: HistoryCategory, titles: dict) -> None:
+    existing = {item.language: item for item in category.translations}
+    for language, title in titles.items():
+        if language not in LANGUAGES:
+            raise HTTPException(status_code=422, detail=f"Unsupported language: {language}")
+        text = (title or "").strip()
+        target = existing.get(language)
+        if not text:
+            if target is not None:
+                category.translations.remove(target)
+            continue
+        if target is None:
+            category.translations.append(HistoryCategoryTranslation(language=language, title=text))
+        else:
+            target.title = text
+
+
+def unique_category_slug(db: Session, base: str, exclude_id: int | None = None) -> str:
+    candidate = base
+    suffix = 2
+    while True:
+        statement = select(HistoryCategory.id).where(HistoryCategory.slug == candidate)
+        if exclude_id:
+            statement = statement.where(HistoryCategory.id != exclude_id)
+        if not db.scalar(statement):
+            return candidate
+        candidate = f"{base}-{suffix}"
+        suffix += 1
+
+
+def assert_no_cycle(db: Session, category_id: int, parent_id: int | None) -> None:
+    """Раздел нельзя вложить в собственного потомка: дерево перестало бы
+    иметь корень, а обход пути зациклился бы."""
+    node_id = parent_id
+    seen = set()
+    while node_id and node_id not in seen:
+        if node_id == category_id:
+            raise HTTPException(status_code=422, detail="Раздел нельзя вложить в самого себя")
+        seen.add(node_id)
+        node_id = db.scalar(select(HistoryCategory.parent_id).where(HistoryCategory.id == node_id))
+
+
+@router.post("/categories", response_model=HistoryCategoryAdminOut, status_code=201)
+def create_category(payload: HistoryCategoryIn, _user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    title = payload.titles.get("en") or payload.titles.get("ru") or ""
+    if not title.strip():
+        raise HTTPException(status_code=422, detail="Нужен хотя бы один заголовок")
+    if payload.parent_id and not db.get(HistoryCategory, payload.parent_id):
+        raise HTTPException(status_code=422, detail="Родительский раздел не найден")
+    category = HistoryCategory(
+        slug=unique_category_slug(db, slugify(payload.slug or title)),
+        parent_id=payload.parent_id,
+        sort_order=payload.sort_order,
+        is_platform=payload.is_platform,
+        is_published=payload.is_published,
+    )
+    db.add(category)
+    db.flush()
+    apply_titles(db, category, payload.titles)
+    db.commit()
+    return next(row for row in category_rows(db) if row["id"] == category.id)
+
+
+@router.patch("/categories/{category_id}", response_model=HistoryCategoryAdminOut)
+def update_category(category_id: int, payload: HistoryCategoryUpdate, _user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    category = db.get(HistoryCategory, category_id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    # detach отличает «вынести в корень» от «родителя не меняем»: null в
+    # payload означал бы и то и другое.
+    if payload.detach:
+        category.parent_id = None
+    elif payload.parent_id is not None:
+        if not db.get(HistoryCategory, payload.parent_id):
+            raise HTTPException(status_code=422, detail="Родительский раздел не найден")
+        assert_no_cycle(db, category_id, payload.parent_id)
+        category.parent_id = payload.parent_id
+    if payload.slug:
+        category.slug = unique_category_slug(db, payload.slug, category_id)
+    if payload.sort_order is not None:
+        category.sort_order = payload.sort_order
+    if payload.is_platform is not None:
+        category.is_platform = payload.is_platform
+    if payload.is_published is not None:
+        category.is_published = payload.is_published
+    if payload.titles is not None:
+        apply_titles(db, category, payload.titles)
+    db.commit()
+    return next(row for row in category_rows(db) if row["id"] == category_id)
+
+
+@router.post("/categories/order", response_model=list[HistoryCategoryAdminOut])
+def reorder_categories(payload: HistoryCategoryOrderIn, _user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[dict]:
+    for position, category_id in enumerate(payload.ids):
+        category = db.get(HistoryCategory, category_id)
+        if category:
+            category.sort_order = position
+    db.commit()
+    return category_rows(db)
+
+
+@router.delete("/categories/{category_id}", status_code=204)
+def delete_category(category_id: int, _user: User = Depends(current_user), db: Session = Depends(get_db)) -> None:
+    category = db.get(HistoryCategory, category_id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    if db.scalar(select(func.count()).select_from(HistoryCategory).where(HistoryCategory.parent_id == category_id)):
+        raise HTTPException(status_code=409, detail="Сначала удалите или перенесите вложенные разделы")
+    if db.scalar(select(func.count()).select_from(HistoryEventCategory).where(HistoryEventCategory.category_id == category_id)):
+        raise HTTPException(status_code=409, detail="К разделу привязаны события, сначала перенесите их")
+    db.delete(category)
+    db.commit()
 
 
 # --- Список и карточка -------------------------------------------------------

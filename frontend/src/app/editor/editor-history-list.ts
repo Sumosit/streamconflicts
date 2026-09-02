@@ -7,7 +7,7 @@ import { ApiService, HistoryAdminRowDto, HistoryCategoryAdminDto } from '../api.
 const PER_PAGE = 30;
 
 @Component({selector:'app-editor-history-list',imports:[FormsModule,RouterLink],template:`<main class="editor-shell">
-<header class="editor-header"><a routerLink="/editor"><b>← Материалы</b></a><nav><a routerLink="/editor/history/research" class="button">Очередь исследования</a><a routerLink="/editor/history/import" class="button">Импорт JSON</a><a class="button primary" routerLink="/editor/history/new">Новое событие</a></nav></header>
+<header class="editor-header"><a routerLink="/editor"><b>← Материалы</b></a><nav><a routerLink="/editor/history/categories" class="button">Разделы</a><a routerLink="/editor/history/research" class="button">Очередь исследования</a><a routerLink="/editor/history/import" class="button">Импорт JSON</a><a class="button primary" routerLink="/editor/history/new">Новое событие</a></nav></header>
 <div class="section-head"><div><h1>История стриминга</h1><p class="muted">События хранятся в одном экземпляре, тексты RU и EN - переводы одного события.</p></div><span>{{total()}}</span></div>
 
 <section class="panel">

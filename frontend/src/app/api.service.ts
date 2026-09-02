@@ -168,6 +168,12 @@ export interface HistoryCategoryAdminDto {
   path: string;
   is_platform: boolean;
   depth: number;
+  sort_order: number;
+  is_published: boolean;
+  titles: Record<string, string>;
+  /** Раздел с событиями или вложенными разделами удалить нельзя. */
+  event_count: number;
+  child_count: number;
 }
 
 export interface HistoryTranslationDraft {
@@ -417,6 +423,22 @@ export class ApiService {
 
   historyAdminCategories(): Observable<HistoryCategoryAdminDto[]> {
     return this.http.get<HistoryCategoryAdminDto[]>(`${SITE.apiBase}/api/admin/history/categories`);
+  }
+
+  createHistoryCategory(payload: unknown): Observable<HistoryCategoryAdminDto> {
+    return this.http.post<HistoryCategoryAdminDto>(`${SITE.apiBase}/api/admin/history/categories`, payload);
+  }
+
+  updateHistoryCategory(id: number, payload: unknown): Observable<HistoryCategoryAdminDto> {
+    return this.http.patch<HistoryCategoryAdminDto>(`${SITE.apiBase}/api/admin/history/categories/${id}`, payload);
+  }
+
+  reorderHistoryCategories(ids: number[]): Observable<HistoryCategoryAdminDto[]> {
+    return this.http.post<HistoryCategoryAdminDto[]>(`${SITE.apiBase}/api/admin/history/categories/order`, { ids });
+  }
+
+  deleteHistoryCategory(id: number): Observable<void> {
+    return this.http.delete<void>(`${SITE.apiBase}/api/admin/history/categories/${id}`);
   }
 
   historyAdminEvents(options: HistoryAdminQuery = {}): Observable<HistoryAdminListDto> {

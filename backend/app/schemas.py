@@ -491,6 +491,38 @@ class HistoryCategoryAdminOut(BaseModel):
     path: str
     is_platform: bool
     depth: int
+    sort_order: int = 0
+    is_published: bool = True
+    titles: dict[str, str] = Field(default_factory=dict)
+    # Сколько событий привязано напрямую: раздел с событиями не удаляем.
+    event_count: int = 0
+    child_count: int = 0
+
+
+class HistoryCategoryIn(BaseModel):
+    slug: str | None = Field(default=None, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=180)
+    parent_id: int | None = None
+    sort_order: int = 0
+    is_platform: bool = False
+    is_published: bool = True
+    # Заголовки по языкам: {"ru": "Платформы", "en": "Platforms"}
+    titles: dict[str, str] = Field(default_factory=dict)
+
+
+class HistoryCategoryUpdate(BaseModel):
+    slug: str | None = Field(default=None, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=180)
+    parent_id: int | None = None
+    detach: bool = False
+    sort_order: int | None = None
+    is_platform: bool | None = None
+    is_published: bool | None = None
+    titles: dict[str, str] | None = None
+
+
+class HistoryCategoryOrderIn(BaseModel):
+    """Новый порядок внутри одного уровня: список id по возрастанию позиции."""
+
+    ids: list[int] = Field(min_length=1)
 
 
 # --- Импорт ------------------------------------------------------------------
