@@ -64,8 +64,14 @@ def main() -> None:
 
     connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
+
+    # Аудит должен работать и до миграции 0014, которая заводит canonical_key
+    # и таблицы истории: смысл скрипта в том, чтобы посмотреть на базу заранее.
+    columns = {row["name"] for row in connection.execute("PRAGMA table_info(people)")}
+    has_key = "canonical_key" in columns
+    key_column = "canonical_key" if has_key else "NULL AS canonical_key"
     people = connection.execute(
-        "SELECT id, site_lang, slug, name, links, canonical_key, entity_type, profile_status FROM people"
+        f"SELECT id, site_lang, slug, name, links, {key_column}, entity_type, profile_status FROM people"
     ).fetchall()
     usage = dict(connection.execute(
         "SELECT person_id, COUNT(*) FROM conflict_people GROUP BY person_id"
@@ -89,8 +95,11 @@ def main() -> None:
     print(f"Всего записей: {len(people)}")
     for language, count in sorted(by_language.items()):
         print(f"  {language}: {count}")
-    already = [p for p in people if p["canonical_key"]]
-    print(f"Уже связаны ключом: {len(already)}")
+    if has_key:
+        already = [p for p in people if p["canonical_key"]]
+        print(f"Уже связаны ключом: {len(already)}")
+    else:
+        print("Уже связаны ключом: колонки ещё нет (база до миграции 0014)")
     print(f"Упоминаются в конфликтах: {len(usage)}")
     if history_usage:
         print(f"Упоминаются в истории: {len(history_usage)}")
